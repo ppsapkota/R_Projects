@@ -1,7 +1,7 @@
 #load libraries
-#library(httr)
-#library(jsonlite)
-#library(lubridate)
+library(httr)
+library(jsonlite)
+library(lubridate)
 library(tidyverse)
 library(stringr)
 library(readxl) #read excel file
@@ -23,7 +23,7 @@ Sys.getenv("R_ZIPCMD","zip")
 path <- Sys.getenv("PATH")
 Sys.setenv("PATH" = paste(path, "C:/Rtools/bin", sep = ";"))
 
-tempfile(tmpdir="./Data/temp")
+tempfile(tmpdir="C:/01_OCHA_TR/03_IM_Tools/R/R_Projects/Data/temp")
 
 
 

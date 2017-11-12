@@ -1,12 +1,12 @@
 
 #Load libraries
-source("./R/r_ps_library_init.R")
+source("C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\R\\r_ps_library_init.R")
 
 #----Define path------------------
-d_fname<-"./Data/HF_fulldata_20170918.xlsx"
+d_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\HF\\HF_ProjectFullDump_20171110.xlsx"
 
 
-pcode_fname<-"./Data/admin.xlsx"
+pcode_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\admin.xlsx"
 ##--Read data sheets-----------
 d_projectdata<-read_excel(d_fname,sheet="ProjectData")
 d_srp<-read_excel(d_fname,sheet="SRP")
@@ -20,6 +20,7 @@ names(d_projectdata)<-gsub(" ","_",names(d_projectdata))
 names(d_srp)<-gsub(" ","_",names(d_srp))
 names(d_location)<-gsub(" ","_",names(d_location))
 names(d_cluster)<-gsub(" ","_",names(d_cluster))
+
 
 ##--
 Project_Time<-substr(d_projectdata$Project_Code,1,6)
@@ -87,14 +88,35 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     
     #--Cluster Budget Beneficiaries
     d_projectdata_cluster<-left_join(d_projectdata,d_cluster,by=c("Project_Code"="CHF_Code"))
-
+##--CHECK location and Project Beneficiaries
+    #sum of location beneficiaries by projects
+    d_location_prj_ben_sum<-d_location %>% 
+                            group_by(ChfProjectCode) %>% 
+                            summarise(loc_men_sum=sum(Men,na.rm=TRUE),
+                                      loc_women_sum=sum(Women,na.rm=TRUE),
+                                      loc_boys_sum=sum(Boys,na.rm=TRUE),
+                                      loc_girls_sum=sum(Girls,na.rm=TRUE)) %>% 
+                            ungroup()
+    
+    d_projectdata_loc_ben_compare<-left_join(d_projectdata,d_location_prj_ben_sum,by=c("Project_Code"="ChfProjectCode"))
+    #check differences
+    d_projectdata_loc_ben_compare$men_chk<-d_projectdata_loc_ben_compare$Beneficiaries_Men - d_projectdata_loc_ben_compare$loc_men_sum
+    d_projectdata_loc_ben_compare$women_chk<-d_projectdata_loc_ben_compare$Beneficiaries_Women - d_projectdata_loc_ben_compare$loc_women_sum
+    d_projectdata_loc_ben_compare$boys_chk<-d_projectdata_loc_ben_compare$Beneficiaries_Boys - d_projectdata_loc_ben_compare$loc_boys_sum
+    d_projectdata_loc_ben_compare$girls_chk<-d_projectdata_loc_ben_compare$Beneficiaries_Girls - d_projectdata_loc_ben_compare$loc_girls_sum
+    
+    openxlsx::write.xlsx(d_projectdata_loc_ben_compare,gsub(".xlsx","_location_ben_compare.xlsx",d_fname),asTable = TRUE,sheetName="ProjectData")
+    
 ##--ANALYSIS TABLES----
     save_summary_fname<-gsub(".xlsx","_summary.xlsx",d_fname)
     wb<-createWorkbook()
+    addWorksheet(wb,"projectdata_cluster")
+    addWorksheet(wb,"location_cluster_budget_ben")
     addWorksheet(wb,"summary")
     addWorksheet(wb,"map_admin3_nproject")
     addWorksheet(wb,"map_admin1_budget")
     addWorksheet(wb,"map_admin3_cluster_ben")
+    addWorksheet(wb,"map_admin3_cluster_budget")
     #
     i_startrow<-1
     
@@ -104,7 +126,13 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     d_projectdata_cluster$Women_C<-round(d_projectdata_cluster$Beneficiaries_Women*d_projectdata_cluster$Percentage/100)
     d_projectdata_cluster$Boys_C<-round(d_projectdata_cluster$Beneficiaries_Boys*d_projectdata_cluster$Percentage/100)
     d_projectdata_cluster$Girls_C<-round(d_projectdata_cluster$Beneficiaries_Girls*d_projectdata_cluster$Percentage/100)
+    #
+    d_projectdata_cluster$Beneficiaries<-d_projectdata_cluster$Men_C+
+                                                   d_projectdata_cluster$Women_C+
+                                                     d_projectdata_cluster$Boys_C+
+                                                     d_projectdata_cluster$Girls_C
     
+    writeDataTable(wb,sheet="projectdata_cluster",x=d_projectdata_cluster,tableName ="projectdata_cluster", startRow = 1)
     ###-Budget and Beneficiaries by cluster
     cluster_budget_beneficiaries<-d_projectdata_cluster %>% 
                                     group_by(Cluster) %>% 
@@ -182,14 +210,16 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     d_location_cluster$Boys_Loc_C<-round(as.numeric(d_location_cluster$Boys)*as.numeric(d_location_cluster$Percentage_C)/100)
     d_location_cluster$Girls_Loc_C<-round(as.numeric(d_location_cluster$Girls)*as.numeric(d_location_cluster$Percentage_C)/100)
     
+    #write to the table
+    writeDataTable(wb,sheet="location_cluster_budget_ben",x=d_location_cluster,tableName ="location_cluster_budget_ben")
     #write.xlsx(d_location_cluster,"./Data/a.xlsx")
     
     ###-projects per subdistrict
-    location_project_list<-d_location_cluster[,c("ChfProjectCode","SubDistrict","SubDistrict_Pcode")]
+    location_project_list<-d_location_cluster[,c("ChfProjectCode","Governorate","District", "SubDistrict", "Governorate_Pcode","District_Pcode","SubDistrict_Pcode")]
     location_project_list<-distinct(location_project_list)
       #number of projects per subdistrict
       nprojects_subdistrict<-location_project_list %>% 
-                             group_by(SubDistrict,SubDistrict_Pcode) %>% 
+                             group_by(Governorate,Governorate_Pcode,District, District_Pcode, SubDistrict,SubDistrict_Pcode) %>% 
                              summarise(nProjects=n())
       writeDataTable(wb,sheet="map_admin3_nproject",x=nprojects_subdistrict,tableName ="admin3_nprojects")
     
@@ -201,25 +231,41 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     writeDataTable(wb,sheet="map_admin1_budget",x=location_budget_gov,tableName ="admin1_budget") 
     
     ###--sum of beneficiaries by subdistrict per cluster
+    
     admin3_cluster_beneficiary<-d_location_cluster %>% 
-                                group_by(SubDistrict,SubDistrict_Pcode,Cluster) %>% 
+                                group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>% 
                                 summarise(Men=sum(Men_Loc_C,na.rm=TRUE),
                                           Women=sum(Women_Loc_C,na.rm=TRUE),
                                           Boys=sum(Boys_Loc_C,na.rm=TRUE),
                                           Girls=sum(Girls_Loc_C,na.rm=TRUE)) %>% 
                                 ungroup() %>%
-                                mutate(Total=rowSums(.[-1:-3],na.rm=TRUE))
+                                mutate(Total=rowSums(.[-1:-7],na.rm=TRUE))
     #now pivot
     #admin3_cluster_beneficiary_pivot<-select(admin3_cluster_beneficiary,1:3,8)
     admin3_cluster_beneficiary_pivot<-admin3_cluster_beneficiary %>%
-                                select(1:3,8) %>% 
-                                group_by(SubDistrict,SubDistrict_Pcode,Cluster) %>%
+                                select(1:7,12) %>% 
+                                group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>%
                                 spread(Cluster,Total) %>% 
                                 ungroup()
     
-    admin3_cluster_beneficiary_pivot$Max_Ben<-apply(admin3_cluster_beneficiary_pivot[,-1:-2],1,function(x, na.rm=FALSE) {max(x, na.rm=TRUE)})
+    admin3_cluster_beneficiary_pivot$Max_Ben<-apply(admin3_cluster_beneficiary_pivot[,-1:-6],1,function(x, na.rm=FALSE) {max(x, na.rm=TRUE)})
+    writeDataTable(wb,sheet="map_admin3_cluster_ben",x=admin3_cluster_beneficiary_pivot,tableName ="admin3_cluster_ben")
     
-    writeDataTable(wb,sheet="map_admin3_cluster_ben",x=admin3_cluster_beneficiary_pivot,tableName ="admin3_cluster_ben") 
+    ###--sum of Budget by subdistrict per cluster
+    admin3_cluster_budget<-d_location_cluster %>% 
+      group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>% 
+      summarise(Location_Budget=sum(Budget_Loc_C,na.rm=TRUE)) %>% 
+      ungroup()
+    
+    #now pivot
+    admin3_cluster_budget_pivot<-admin3_cluster_budget %>%
+      group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>%
+      spread(Cluster,Location_Budget) %>% 
+      ungroup()
+    #add total budget field
+    admin3_cluster_budget_pivot$Location_Budget<-apply(admin3_cluster_budget_pivot[,-1:-6],1,function(x, na.rm=FALSE) {sum(x, na.rm=TRUE)})
+    writeDataTable(wb,sheet="map_admin3_cluster_budget",x=admin3_cluster_budget_pivot,tableName ="admin3_cluster_budget") 
+    
     #save file                     
     saveWorkbook(wb,save_summary_fname,overwrite = TRUE)
     
