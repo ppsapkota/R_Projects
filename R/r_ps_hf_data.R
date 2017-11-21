@@ -1,10 +1,7 @@
-
 #Load libraries
 source("C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\R\\r_ps_library_init.R")
-
 #----Define path------------------
-d_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\HF\\HF_ProjectFullDump_20171110.xlsx"
-
+d_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\HF\\HF_ProjectFullDump_since2014_20171117.xlsx"
 
 pcode_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\admin.xlsx"
 ##--Read data sheets-----------
@@ -20,7 +17,6 @@ names(d_projectdata)<-gsub(" ","_",names(d_projectdata))
 names(d_srp)<-gsub(" ","_",names(d_srp))
 names(d_location)<-gsub(" ","_",names(d_location))
 names(d_cluster)<-gsub(" ","_",names(d_cluster))
-
 
 ##--
 Project_Time<-substr(d_projectdata$Project_Code,1,6)
@@ -114,6 +110,9 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     addWorksheet(wb,"location_cluster_budget_ben")
     addWorksheet(wb,"summary")
     addWorksheet(wb,"map_admin3_nproject")
+    addWorksheet(wb,"map_admin3_npartner")
+    addWorksheet(wb,"map_admin3_npartner_cluster")
+    addWorksheet(wb,"map_admin1_npartner_cluster")
     addWorksheet(wb,"map_admin1_budget")
     addWorksheet(wb,"map_admin3_cluster_ben")
     addWorksheet(wb,"map_admin3_cluster_budget")
@@ -200,7 +199,7 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     names(d_cluster_t)<-gsub("Percentage","Percentage_C",names(d_cluster_t))
     d_location_cluster<-left_join(d_location,d_cluster_t,by=c("ChfProjectCode"="CHF_Code"))
     #bring project budget
-    d_project_budget<-distinct(d_projectdata[,c("Project_Code","Allocation_type","Org_Type","Budget")])
+    d_project_budget<-distinct(d_projectdata[,c("Project_Code","Project_Time","Allocation_Name","Allocation_type","Organization", "Org_Type","Budget")])
     d_location_cluster<-left_join(d_location_cluster,d_project_budget,by=c("ChfProjectCode"="Project_Code"))
     #budget per cluster per location
     d_location_cluster$Budget_Loc_C<-as.numeric(d_location_cluster$Budget)*as.numeric(d_location_cluster$Percentage)/100*as.numeric(d_location_cluster$Percentage_C)/100
@@ -215,14 +214,38 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     #write.xlsx(d_location_cluster,"./Data/a.xlsx")
     
     ###-projects per subdistrict
-    location_project_list<-d_location_cluster[,c("ChfProjectCode","Governorate","District", "SubDistrict", "Governorate_Pcode","District_Pcode","SubDistrict_Pcode")]
-    location_project_list<-distinct(location_project_list)
+    location_project_list<-distinct(d_location_cluster[,c("ChfProjectCode","Governorate","District", "SubDistrict", "Governorate_Pcode","District_Pcode","SubDistrict_Pcode")])
       #number of projects per subdistrict
       nprojects_subdistrict<-location_project_list %>% 
                              group_by(Governorate,Governorate_Pcode,District, District_Pcode, SubDistrict,SubDistrict_Pcode) %>% 
                              summarise(nProjects=n())
       writeDataTable(wb,sheet="map_admin3_nproject",x=nprojects_subdistrict,tableName ="admin3_nprojects")
     
+    ###-partners per subdistrict
+      ###-projects per subdistrict
+      location_partner_list<-distinct(d_location_cluster[,c("Organization","Governorate","District", "SubDistrict", "Governorate_Pcode","District_Pcode","SubDistrict_Pcode")])
+      #number of partners per subdistrict
+      npartner_subdistrict<-location_partner_list %>% 
+        group_by(Governorate,Governorate_Pcode,District, District_Pcode, SubDistrict,SubDistrict_Pcode) %>% 
+        summarise(nPartner=n())
+      writeDataTable(wb,sheet="map_admin3_npartner",x=npartner_subdistrict,tableName ="admin3_npartner")
+      
+    ###-partners per subdistrict per cluster
+      location_partner_cluster_list<-distinct(d_location_cluster[,c("Cluster","Organization","Governorate","District", "SubDistrict", "Governorate_Pcode","District_Pcode","SubDistrict_Pcode")])
+      #number of partners per subdistrict per cluster
+      npartner_cluster_subdistrict<-location_partner_cluster_list %>% 
+        group_by(Cluster,Governorate,Governorate_Pcode,District, District_Pcode, SubDistrict,SubDistrict_Pcode) %>% 
+        summarise(nPartner=n())
+      writeDataTable(wb,sheet="map_admin3_npartner_cluster",x=npartner_cluster_subdistrict,tableName ="admin3_npartner_cluster")
+      
+    ###-partners per governorate per cluster
+      location_adm1_partner_cluster_list<-distinct(d_location_cluster[,c("Cluster","Organization","Governorate")])
+      #number of partners per subdistrict per cluster
+      npartner_cluster_gov<-location_adm1_partner_cluster_list %>% 
+        group_by(Cluster,Governorate) %>% 
+        summarise(nPartner=n())
+      writeDataTable(wb,sheet="map_admin1_npartner_cluster",x=npartner_cluster_gov,tableName ="admin1_npartner_cluster")
+      
     ###-sum of budget by governorate
     location_budget_gov<-d_location_cluster %>% 
                             group_by(Governorate_Pcode,Governorate) %>% 
@@ -231,7 +254,6 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     writeDataTable(wb,sheet="map_admin1_budget",x=location_budget_gov,tableName ="admin1_budget") 
     
     ###--sum of beneficiaries by subdistrict per cluster
-    
     admin3_cluster_beneficiary<-d_location_cluster %>% 
                                 group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>% 
                                 summarise(Men=sum(Men_Loc_C,na.rm=TRUE),
@@ -240,7 +262,7 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
                                           Girls=sum(Girls_Loc_C,na.rm=TRUE)) %>% 
                                 ungroup() %>%
                                 mutate(Total=rowSums(.[-1:-7],na.rm=TRUE))
-    #now pivot
+    #Pivot
     #admin3_cluster_beneficiary_pivot<-select(admin3_cluster_beneficiary,1:3,8)
     admin3_cluster_beneficiary_pivot<-admin3_cluster_beneficiary %>%
                                 select(1:7,12) %>% 
@@ -268,6 +290,9 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     
     #save file                     
     saveWorkbook(wb,save_summary_fname,overwrite = TRUE)
+    
+    
+##-----GRAPHS and CHARTS---------
     
     
     
