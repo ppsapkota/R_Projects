@@ -1,8 +1,25 @@
+# @Author: Punya Prasad Sapkota
+# Generate summary statistics table for Humanitarian Country Baed Pooled Fund data
+# Input: CBPF data dunmp 
+# 
+# Args: No specific arguments are required
+# 
+# 
+# Returns: 
+# 
+#  
+
 #Load libraries
 source("C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\R\\r_ps_library_init.R")
 #----Define path------------------
 d_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\HF\\ProjectFullDump_ALL_2014_2017.xlsx"
 pcode_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\admin.xlsx"
+
+#for API
+source("./R/r_func_cbpf_api.R")
+#initialisation
+  u<-''
+  pw<-''
 
 ##--Read data sheets-----------
 d_projectdata<-read_excel(d_fname,sheet="ProjectData")
@@ -17,13 +34,13 @@ names(d_srp)<-gsub(" ","_",names(d_srp))
 names(d_location)<-gsub(" ","_",names(d_location))
 names(d_cluster)<-gsub(" ","_",names(d_cluster))
 
-# ##--FILTER PROJECTS for specific year
-filter_year1<-"TUR-16"
-filter_year2<-"TUR-17"
-d_projectdata<-filter(d_projectdata,substr(Project_Code,1,6)==filter_year1 | substr(Project_Code,1,6)==filter_year2)
-        d_srp<-filter(d_srp,substr(CHF_Code,1,6)==filter_year1 | substr(CHF_Code,1,6)==filter_year2)
-   d_location<-filter(d_location, substr(ChfProjectCode,1,6)==filter_year1 | substr(ChfProjectCode,1,6)==filter_year2)
-    d_cluster<-filter(d_cluster,substr(CHF_Code,1,6)==filter_year1 | substr(CHF_Code,1,6)==filter_year2)
+# # ##--FILTER PROJECTS for specific year
+# filter_year1<-"TUR-16"
+# filter_year2<-"TUR-17"
+# d_projectdata<-filter(d_projectdata,substr(Project_Code,1,6)==filter_year1 | substr(Project_Code,1,6)==filter_year2)
+#         d_srp<-filter(d_srp,substr(CHF_Code,1,6)==filter_year1 | substr(CHF_Code,1,6)==filter_year2)
+#    d_location<-filter(d_location, substr(ChfProjectCode,1,6)==filter_year1 | substr(ChfProjectCode,1,6)==filter_year2)
+#     d_cluster<-filter(d_cluster,substr(CHF_Code,1,6)==filter_year1 | substr(CHF_Code,1,6)==filter_year2)
 #others to new national ngo
 #d_projectdata$Org_Type<-gsub("Others", "National NGO",d_projectdata$Org_Type)
 
@@ -93,6 +110,54 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
       d_projectdata_cluster$Boys_C+
       d_projectdata_cluster$Girls_C
 
+    
+#API Project cluster planned/actual
+    #Beneficiary reached - project report
+    url<-"https://cbpfapi.unocha.org/vo1/odata/NarrativeReportBeneficiary?poolfundAbbrv=TUR70&$format=csv"
+    d_project_ben_reached<-restapi_getdata_csv(url, u, pw)
+    d_project_ben_reached<-d_project_ben_reached[,c("ChfProjectCode","BeneficiaryName","PlannedMen","PlannedWomen","PlannedBoys","PlannedGirls","PlannedTotal",
+                                                    "ActualMen", "ActualWomen","ActualBoys","ActualGirls","ActualTotal")]
+    
+    #Project summaries - status
+    url <- "https://cbpfapi.unocha.org/vo1/odata/ProjectSummary?poolfundAbbrv=TUR70&$format=csv"
+    d_projectsummary<-restapi_getdata_csv(url, u, pw)
+    d_projectsummary_prjstatus<-d_projectsummary[,c("ChfProjectCode","ProjectStatus","ProcessStatus")]
+    
+    #Bring project status in the project cluster sheet
+    d_projectdata_cluster<-left_join(d_projectdata_cluster,d_projectsummary_prjstatus, by=c("Project_Code"="ChfProjectCode"))
+    #
+    d_projectdata_cluster_ben_reached<-left_join(d_projectdata_cluster[,c("Project_Time","Allocation_Name","Project_Code","Organization","Org_Type","ProjectStatus","ProcessStatus","Cluster","Percentage")],d_project_ben_reached, by=c("Project_Code"="ChfProjectCode"))
+    
+    #Distribute planned beneficiaries by cluster
+    d_projectdata_cluster_ben_reached$PlannedMen_C<-round(d_projectdata_cluster_ben_reached$PlannedMen*d_projectdata_cluster_ben_reached$Percentage/100)
+    d_projectdata_cluster_ben_reached$PlannedWomen_C<-round(d_projectdata_cluster_ben_reached$PlannedWomen*d_projectdata_cluster_ben_reached$Percentage/100)
+    d_projectdata_cluster_ben_reached$PlannedBoys_C<-round(d_projectdata_cluster_ben_reached$PlannedBoys*d_projectdata_cluster_ben_reached$Percentage/100)
+    d_projectdata_cluster_ben_reached$PlannedGirls_C<-round(d_projectdata_cluster_ben_reached$PlannedGirls*d_projectdata_cluster_ben_reached$Percentage/100)
+    d_projectdata_cluster_ben_reached$PlannedTotal_C<-round(d_projectdata_cluster_ben_reached$PlannedTotal*d_projectdata_cluster_ben_reached$Percentage/100)
+    
+    #Distribute actual beneficiaries by cluster
+    d_projectdata_cluster_ben_reached$ActualMen_C<-round(d_projectdata_cluster_ben_reached$ActualMen*d_projectdata_cluster_ben_reached$Percentage/100)
+    d_projectdata_cluster_ben_reached$ActualWomen_C<-round(d_projectdata_cluster_ben_reached$ActualWomen*d_projectdata_cluster_ben_reached$Percentage/100)
+    d_projectdata_cluster_ben_reached$ActualBoys_C<-round(d_projectdata_cluster_ben_reached$ActualBoys*d_projectdata_cluster_ben_reached$Percentage/100)
+    d_projectdata_cluster_ben_reached$ActualGirls_C<-round(d_projectdata_cluster_ben_reached$ActualGirls*d_projectdata_cluster_ben_reached$Percentage/100)
+    d_projectdata_cluster_ben_reached$ActualTotal_C<-round(d_projectdata_cluster_ben_reached$ActualTotal*d_projectdata_cluster_ben_reached$Percentage/100)
+    
+    #Sum per project
+    d_projectdata_cluster_ben_reached <- d_projectdata_cluster_ben_reached %>% 
+                                        group_by(Project_Time,Allocation_Name,Project_Code,Organization,Org_Type,Cluster,Percentage) %>% 
+                                        summarise(PlannedMen_C = sum(PlannedMen_C, na.rm = TRUE),
+                                                  PlannedWomen_C = sum(PlannedWomen_C, na.rm = TRUE),
+                                                  PlannedBoys_C = sum(PlannedBoys_C, na.rm = TRUE),
+                                                  PlannedGirls_C = sum(PlannedGirls_C, na.rm = TRUE),
+                                                  PlannedTotal_C = sum(PlannedTotal_C, na.rm = TRUE),
+                                                  ActualMen_C = sum(ActualMen_C, na.rm = TRUE),
+                                                  ActualWomen_C = sum(ActualWomen_C, na.rm = TRUE),
+                                                  ActualBoys_C = sum(ActualBoys_C, na.rm = TRUE),
+                                                  ActualGirls_C = sum(ActualGirls_C, na.rm = TRUE),
+                                                  ActualTotal_C = sum(ActualTotal_C, na.rm = TRUE)) %>% 
+                                                  ungroup()
+    
+    
 ###--MAIN TABLE ----->>>>>LOCATION - CLUSTER - BUDGET - BENEFICIARY
     #--bring Cluster to Location
     d_cluster_t<-d_cluster #temp table
@@ -146,6 +211,7 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     save_summary_fname<-gsub(".xlsx","_summary.xlsx",d_fname)
     wb<-createWorkbook()
     addWorksheet(wb,"projectdata_cluster")
+    addWorksheet(wb,"projectdata_cluster_ben_plvsac")
     addWorksheet(wb,"location_cluster_budget_ben")
     addWorksheet(wb,"summary")
     addWorksheet(wb,"Summary_Partners")
@@ -162,8 +228,10 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
     
     #write project cluster budget and beneficiary disaggregated data
     writeDataTable(wb,sheet="projectdata_cluster",x=d_projectdata_cluster,tableName ="projectdata_cluster", startRow = 1)
+    writeDataTable(wb,sheet="projectdata_cluster_ben_plvsac",x=d_projectdata_cluster_ben_reached,tableName ="projectdata_cluster_ben_plvsac", startRow = 1)
     #write location project cluster budget and beneficiary disaggregated data to the table
     writeDataTable(wb,sheet="location_cluster_budget_ben",x=d_location_cluster,tableName ="location_cluster_budget_ben",startRow = 1)
+    
     #
     i_startrow<-1
     ###-Budget and Beneficiaries by cluster
@@ -319,6 +387,17 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
       writeDataTable(wb,sheet="summary",x=npartner_admin1_org_type,tableName ="admin1_npartner_org_type",startRow = i_startrow)
       i_startrow<-i_startrow+nrow(npartner_admin1_org_type)+5
       
+      
+      ###-PARTNERS and NUMBER OF GOVERNORATES by PARTNERS
+      location_admin1_partner_type_list<-distinct(d_location_cluster[,c("Governorate","Org_Type","Organization")])
+      #number of governorates by partner
+      partner_n_admin1_org_type<-location_admin1_partner_type_list %>% 
+        group_by(Organization,Org_Type,Governorate) %>% 
+        summarise(nPartner=n()) %>% 
+        spread(Governorate,nPartner)
+      writeDataTable(wb,sheet="summary",x=partner_n_admin1_org_type,tableName ="partner_n_admin1_org_type",startRow = i_startrow)
+      i_startrow<-i_startrow+nrow(partner_n_admin1_org_type)+5
+      
 ###-BUDGET sum of budget by governorate
     location_budget_gov<-d_location_cluster %>% 
                             group_by(Governorate_Pcode,Governorate) %>% 
@@ -390,13 +469,17 @@ d_location$Percentage<-gsub("%",'',d_location$Percentage)
           plot.background=element_blank())
     
     #bar chart budget per cluster
-      ggplot(data=dataset,aes(Cluster,Budget)) + 
+      p<- ggplot(data=dataset,aes(Cluster,Budget)) + 
       coord_flip()+
-      geom_bar(stat="sum",width=0.5) +
-      geom_text(stat="sum",aes(label=format(round(Budget/1000000,1),big.mark=",",scientific=FALSE)),hjust=0, vjust=0.5,size=3,na.rm = FALSE,show.legend = NA)+
+      geom_bar(stat="sum",width=0.5,fill=rgb(56,146,208, maxColorValue = 255)) +
+      geom_text(stat="sum",aes(label=format(round(Budget/1000000,1),big.mark=",",scientific=FALSE)),hjust=1, vjust=0.5,size=3,na.rm = FALSE,show.legend = NA)+
       scale_x_discrete(labels=function(x){str_wrap(x,width = 20)})+
       ggplot2theme
+      #
+      ggplotly(p)
+    
     #bar chart
+     
     
     
     

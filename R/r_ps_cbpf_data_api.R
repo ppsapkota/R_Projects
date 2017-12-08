@@ -48,7 +48,13 @@ d_day<-format(Sys.Date(),"%Y%m%d")
   url<-"https://cbpfapi.unocha.org/vo1/odata/NarrativeReportBeneficiary?poolfundAbbrv=TUR70&$format=csv"
   d_project_ben_reached<-restapi_getdata_csv(url, u, pw)
   write.xlsx(d_project_ben_reached,paste0(d_path,"d_project_ben_reached_",d_day,".xlsx"),sheetName="project_ben_reached")
-#Project all locations
+#Cluster
+  url<-"https://cbpfapi.unocha.org/vo1/odata/Cluster?poolfundAbbrv=AFG23&$format=csv"
+  d_project_ben_reached<-restapi_getdata_csv(url, u, pw)
+  write.xlsx(d_project_ben_reached,paste0(d_path,"d_project_ben_reached_",d_day,".xlsx"),sheetName="project_ben_reached")
+  
+  
+  #Project all locations
   url<-"https://cbpfapi.unocha.org/vo1/odata/ProjectAllLocationsByActivity?poolfundAbbrv=TUR70&$format=csv"
   d_project_activity_location<-restapi_getdata_csv(url, u, pw)
   write.xlsx(d_project_activity_location,paste0(d_path,"d_project_activity_location_",d_day,".xlsx"),sheetName="location")

@@ -8,6 +8,9 @@ library(readxl) #read excel file
 library(dplyr)
 library(ggplot2)
 library(openxlsx) #'write xlsx'
+library(plotly)
+library(googleVis)
+library(networkD3)
 #library(data.table)
 #library(rgdal)
 
@@ -24,6 +27,5 @@ path <- Sys.getenv("PATH")
 Sys.setenv("PATH" = paste(path, "C:/Rtools/bin", sep = ";"))
 
 tempfile(tmpdir="C:/01_OCHA_TR/03_IM_Tools/R/R_Projects/Data/temp")
-
 
 
