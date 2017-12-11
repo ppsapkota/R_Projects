@@ -9,8 +9,11 @@ library(dplyr)
 library(ggplot2)
 library(openxlsx) #'write xlsx'
 library(plotly)
+
+#---NETWORKS---------
 library(googleVis)
 library(networkD3)
+library(visNetwork)
 #library(data.table)
 #library(rgdal)
 
