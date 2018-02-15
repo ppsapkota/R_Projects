@@ -17,14 +17,14 @@ source("./R/r_ps_library_init.R")
           plot.background=element_blank())
     
     #bar chart budget per cluster
-      p<- ggplot(data=dataset,aes(Cluster,Budget)) + 
-      coord_flip()+
-      geom_bar(stat="sum",width=0.5,fill=rgb(56,146,208, maxColorValue = 255)) +
-      geom_text(stat="sum",aes(label=format(round(Budget/1000000,1),big.mark=",",scientific=FALSE)),hjust=1, vjust=0.5,size=3,na.rm = FALSE,show.legend = NA)+
+    #bar chart budget per cluster
+    p<- ggplot(data=dataset,aes(Cluster,Budget)) + 
+      geom_bar(stat="sum",width=0.75,fill=rgb(100,190,225, maxColorValue = 255),position = 'dodge') +
+      geom_text(stat="sum",aes(y=0,label=format(round(Budget/1000000,1),big.mark=",",scientific=FALSE)),hjust=-0.25, vjust=0.5,size=4,na.rm = FALSE,show.legend = NA)+
       scale_x_discrete(labels=function(x){str_wrap(x,width = 20)})+
-      ggplot2theme
-      #
-      ggplotly(p)
+      ggplot2theme +
+      coord_flip()
+    p
     
     #bar chart
      
