@@ -10,7 +10,7 @@
 #Load libraries
 source("C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\R\\r_ps_library_init.R")
 #----Define path------------------
-d_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\HF\\ProjectFullDump_2017_Allocations_Annual_Report_20180212.xlsx"
+d_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\HF\\ProjectFullDump_ALL_2014_2018_201803028.xlsx"
 pcode_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\admin.xlsx"
 
 #for API
@@ -144,6 +144,7 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     
     #Bring project status in the project cluster sheet
     d_projectdata_cluster<-left_join(d_projectdata_cluster,d_projectsummary_prjstatus, by=c("Project_Code"="ChfProjectCode"))
+    
     #
     d_projectdata_cluster_ben_reached<-left_join(d_projectdata_cluster[,c("Project_Time","Allocation_Name","Project_Code","Organization","Org_Type","ProjectStatus","ProcessStatus","Cluster","Percentage")],
                                                  d_project_ben_reached, by=c("Project_Code"="ChfProjectCode"))
@@ -163,20 +164,22 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     d_projectdata_cluster_ben_reached$ActualGirls_C<-round(d_projectdata_cluster_ben_reached$ActualGirls*d_projectdata_cluster_ben_reached$Percentage/100)
     d_projectdata_cluster_ben_reached$ActualTotal_C<-round(d_projectdata_cluster_ben_reached$ActualTotal*d_projectdata_cluster_ben_reached$Percentage/100)
     
+    
+    
     #Sum per project
-    d_projectdata_cluster_ben_reached <- d_projectdata_cluster_ben_reached %>% 
-                                        group_by(Project_Time,Allocation_Name,Project_Code,Organization,Org_Type,Cluster,Percentage) %>% 
-                                        summarise(PlannedMen_C = sum(PlannedMen_C, na.rm = TRUE),
-                                                  PlannedWomen_C = sum(PlannedWomen_C, na.rm = TRUE),
-                                                  PlannedBoys_C = sum(PlannedBoys_C, na.rm = TRUE),
-                                                  PlannedGirls_C = sum(PlannedGirls_C, na.rm = TRUE),
-                                                  PlannedTotal_C = sum(PlannedTotal_C, na.rm = TRUE),
-                                                  ActualMen_C = sum(ActualMen_C, na.rm = TRUE),
-                                                  ActualWomen_C = sum(ActualWomen_C, na.rm = TRUE),
-                                                  ActualBoys_C = sum(ActualBoys_C, na.rm = TRUE),
-                                                  ActualGirls_C = sum(ActualGirls_C, na.rm = TRUE),
-                                                  ActualTotal_C = sum(ActualTotal_C, na.rm = TRUE)) %>% 
-                                                  ungroup()
+    # d_projectdata_cluster_ben_reached <- d_projectdata_cluster_ben_reached %>% 
+    #                                     group_by(Project_Time,Allocation_Name,Project_Code,Organization,Org_Type,Cluster) %>% 
+    #                                     summarise(PlannedMen_C = sum(PlannedMen_C, na.rm = TRUE),
+    #                                               PlannedWomen_C = sum(PlannedWomen_C, na.rm = TRUE),
+    #                                               PlannedBoys_C = sum(PlannedBoys_C, na.rm = TRUE),
+    #                                               PlannedGirls_C = sum(PlannedGirls_C, na.rm = TRUE),
+    #                                               PlannedTotal_C = sum(PlannedTotal_C, na.rm = TRUE),
+    #                                               ActualMen_C = sum(ActualMen_C, na.rm = TRUE),
+    #                                               ActualWomen_C = sum(ActualWomen_C, na.rm = TRUE),
+    #                                               ActualBoys_C = sum(ActualBoys_C, na.rm = TRUE),
+    #                                               ActualGirls_C = sum(ActualGirls_C, na.rm = TRUE),
+    #                                               ActualTotal_C = sum(ActualTotal_C, na.rm = TRUE)) %>% 
+    #                                               ungroup()
     
     
 ###--MAIN TABLE ----->>>>>LOCATION - CLUSTER - BUDGET - BENEFICIARY
@@ -189,8 +192,8 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     
     
     #bring project budget to location
-    #d_project_budget<-distinct(d_projectdata[,c("Project_Code","Project_Time","Allocation_Name","Allocation_type","Organization", "Org_Type","Budget","ProjectStatus")])
-    d_project_budget<-distinct(d_projectdata[,c("Project_Code","Project_Time","Allocation_Name","Allocation_type","Organization", "Org_Type","Budget", "Project_Status")])
+    d_project_budget<-distinct(d_projectdata[,c("Project_Code","Project_Time","Allocation_Name","Allocation_type","Organization", "Org_Type","Budget","ProjectStatus")])
+    #d_project_budget<-distinct(d_projectdata[,c("Project_Code","Project_Time","Allocation_Name","Allocation_type","Organization", "Org_Type","Budget", "Project_Status")])
     d_location_cluster<-inner_join(d_location_cluster,d_project_budget,by=c("ChfProjectCode"="Project_Code"))
     #budget per cluster per location
     d_location_cluster$Budget_Loc_C<-as.numeric(d_location_cluster$Budget)*as.numeric(d_location_cluster$Percentage)/100*as.numeric(d_location_cluster$Percentage_C)/100
