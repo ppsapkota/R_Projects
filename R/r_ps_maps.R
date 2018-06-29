@@ -14,8 +14,8 @@ library(leaflet)
 
 ##set path of shapefile
 shp_path<-"./Data/GIS"
-admin3_shp_name<-"syr_admin3"
-admin1_shp_name<-"syr_admin1"
+admin3_shp_name<-"syr_admbnda_adm3_uncs_unocha"
+admin1_shp_name<-"syr_admbnda_adm1_uncs_unocha"
 #-----main data to map
 d_map_admin3<-admin3_cluster_budget_pivot
 dataset<-d_map_admin3
@@ -34,7 +34,7 @@ dataset<-d_map_admin3
 shp_admin3<-sf::read_sf(paste0(shp_path,"/",admin3_shp_name,".shp"))
 shp_admin1<-sf::read_sf(paste0(shp_path,"/",admin1_shp_name,".shp"))
 #shp_admin3 <-read_shape(paste0(shp_path,"/",admin3_shp_name,".shp"), as.sf=TRUE) #tmaptool package
-map_admin3<- left_join(shp_admin3, d_map_admin3,by=c("PCODE"="SubDistrict_Pcode"))
+map_admin3<- left_join(shp_admin3, d_map_admin3,by=c("admin3Pcod"="SubDistrict_Pcode"))
 map_admin1<-shp_admin1
 map_admin1_centroid<-st_centroid(shp_admin1)
 #Add Long and Lat coordinate
@@ -195,3 +195,4 @@ mapTheme <- function() {
       legend.key.height = unit(1, "cm"), legend.key.width = unit(0.2, "cm")
     ) 
 }
+

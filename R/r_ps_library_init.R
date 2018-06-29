@@ -8,6 +8,10 @@ library(readxl) #read excel file
 library(dplyr)
 library(ggplot2)
 suppressPackageStartupMessages(library(openxlsx)) #'write xlsx'
+
+#visuals
+library(RColorBrewer)
+
 #library(plotly)
 
 #---NETWORKS---------
