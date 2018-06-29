@@ -1,5 +1,5 @@
 #load libraries
-library(httr)
+suppressPackageStartupMessages(library(httr))
 library(jsonlite)
 library(lubridate)
 library(tidyverse)
@@ -7,7 +7,7 @@ library(stringr)
 library(readxl) #read excel file
 library(dplyr)
 library(ggplot2)
-library(openxlsx) #'write xlsx'
+suppressPackageStartupMessages(library(openxlsx)) #'write xlsx'
 #library(plotly)
 
 #---NETWORKS---------

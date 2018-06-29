@@ -2,7 +2,7 @@ rm(list = ls())
 
 source("./R/r_ps_library_init.R")
 
-f_kobo_fname<-"C:\\Dropbox (OCHA)\\GIS\\01_Analysis_Projects\\02_Thematic\\4W\\SNGOs\\kobo_form\\SCSO_Form_20180220_V1_0.xlsx"
+f_kobo_fname<-"C:\\Dropbox (OCHA)\\GIS\\01_Analysis_Projects\\02_Thematic\\4W\\SNGOs\\kobo_form\\SCSO_Form_20180423_V1_1.xlsx"
 f_org_kobo_un<-"C:\\Dropbox (OCHA)\\GIS\\01_Analysis_Projects\\02_Thematic\\4W\\SNGOs\\kobo_form\\partner_list\\SCSO_partner_list_usernames_kobo.xlsx"
 f_save_location <- "C:\\Dropbox (OCHA)\\GIS\\01_Analysis_Projects\\02_Thematic\\4W\\SNGOs\\kobo_form\\kobo_partners_forms\\"
 
@@ -29,17 +29,18 @@ for (i in 1:nrow(data))
   org_acronym <- data$org_acronym[i]
   
   #prepare file name
-  f_kobo_savename <- paste0(f_save_location,org_code,"_",org_acronym,"_","SCSO_Form_20180220_V1_0.xlsx")
+  f_kobo_savename <- paste0(f_save_location,org_code,"_",org_acronym,"_","SCSO_Form_20180423_V1_1.xlsx")
   
   #SETTINGS sheet - add org name and make the id unique
   data_settings_i$form_title <- paste0(org_code,"_",org_acronym,"_",data_settings_i$form_title)
-  data_settings_i$id_string <- paste0(org_code,"_",org_acronym,"_","SNGO_3W")
+  data_settings_i$form_id <-  str_to_lower(paste0(org_code,"_",org_acronym,"_","SNGO_3W_data"))
+  data_settings_i$id_string <- str_to_lower(paste0(org_code,"_",org_acronym,"_","SNGO_3W"))
   
   #SURVEY sheet - add org name en/ar as default
-  i_row <- which(data_survey_i$name=="org_ar_name")
+  i_row <- which(data_survey_i$name=="org_na_ar")
   data_survey_i$default[i_row] <- org_name_ar
   #
-  i_row <- which(data_survey_i$name=="org_en_name")
+  i_row <- which(data_survey_i$name=="org_na_en")
   data_survey_i$default[i_row] <- org_name_en
 
 #NOW save file

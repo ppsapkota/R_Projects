@@ -7,11 +7,13 @@
 # 
 # Returns: 
 # 
+rm(list=ls())
+
 #Load libraries
-source("C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\R\\r_ps_library_init.R")
+source("./R/r_ps_library_init.R")
 #----Define path------------------
-d_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\HF\\ProjectFullDump_ALL_2014_2018_201803028.xlsx"
-pcode_fname<-"C:\\01_OCHA_TR\\03_IM_Tools\\R\\R_Projects\\Data\\admin.xlsx"
+d_fname<-"./Data/HF/2018 ProjectFullDump.xlsx"
+pcode_fname<-"./Data/admin.xlsx"
 
 #for API
 source("./R/r_func_cbpf_api.R")
