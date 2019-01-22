@@ -175,10 +175,10 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     d_projectdata_cluster_ben_reached$ActualTotal_C<-round(d_projectdata_cluster_ben_reached$ActualTotal*d_projectdata_cluster_ben_reached$Percentage/100)
 
 # ###############--------------------------------------------------------------------------########################
-    ##Sum per project
-    d_projectdata_cluster_ben_reached <- d_projectdata_cluster_ben_reached %>%
-                                        group_by(Project_Time,Allocation_Name,Project_Code,Organization,Org_Type,Cluster, BeneficiaryName) %>%
-                                        summarise(PlannedMen_C = sum(PlannedMen_C, na.rm = TRUE),
+    ##Sum reached per project
+    d_projectdata_cluster_ben_reached_sum <- d_projectdata_cluster_ben_reached %>%
+                                            group_by(Project_Time,Allocation_Name,Project_Code,Organization,Org_Type,Cluster, BeneficiaryName) %>%
+                                            summarise(PlannedMen_C = sum(PlannedMen_C, na.rm = TRUE),
                                                   PlannedWomen_C = sum(PlannedWomen_C, na.rm = TRUE),
                                                   PlannedBoys_C = sum(PlannedBoys_C, na.rm = TRUE),
                                                   PlannedGirls_C = sum(PlannedGirls_C, na.rm = TRUE),
@@ -190,6 +190,22 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
                                                   ActualTotal_C = sum(ActualTotal_C, na.rm = TRUE)) %>%
                                                   ungroup()
 
+##Sum reached per cluster
+    d_projectdata_cluster_ben_reached_sum_bycluster <- d_projectdata_cluster_ben_reached %>%
+                                                        group_by(Project_Time,Cluster) %>%
+                                                        summarise(PlannedMen_C = sum(PlannedMen_C, na.rm = TRUE),
+                                                                  PlannedWomen_C = sum(PlannedWomen_C, na.rm = TRUE),
+                                                                  PlannedBoys_C = sum(PlannedBoys_C, na.rm = TRUE),
+                                                                  PlannedGirls_C = sum(PlannedGirls_C, na.rm = TRUE),
+                                                                  PlannedTotal_C = sum(PlannedTotal_C, na.rm = TRUE),
+                                                                  ActualMen_C = sum(ActualMen_C, na.rm = TRUE),
+                                                                  ActualWomen_C = sum(ActualWomen_C, na.rm = TRUE),
+                                                                  ActualBoys_C = sum(ActualBoys_C, na.rm = TRUE),
+                                                                  ActualGirls_C = sum(ActualGirls_C, na.rm = TRUE),
+                                                                  ActualTotal_C = sum(ActualTotal_C, na.rm = TRUE)) %>%
+                                                                  ungroup()
+
+    
 ###--MAIN TABLE ----->>>>>LOCATION - CLUSTER - BUDGET - BENEFICIARY
     #--bring Cluster to Location
     d_cluster_t<-d_cluster #temp table
@@ -248,11 +264,8 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
 ##--ANALYSIS SUMMARY TABLES----
     save_summary_fname<-gsub(".xlsx","_summary.xlsx",d_fname)
     wb<-createWorkbook()
-    addWorksheet(wb,"projectdata_cluster")
-    addWorksheet(wb,"prjdata_cluster_ben_pl_act")
-    addWorksheet(wb,"location_cluster_budget_ben")
-    addWorksheet(wb,"srp_objectives_cluster_budget")
     addWorksheet(wb,"summary")
+    addWorksheet(wb,"srp_objectives_cluster_budget")
     addWorksheet(wb,"Summary_Partners")
     addWorksheet(wb,"map_admin1_budget")
     addWorksheet(wb,"map_admin1_cluster_budget")
@@ -267,9 +280,13 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     addWorksheet(wb,"map_admin3_cluster_budget")
     
     #write project cluster budget and beneficiary disaggregated data
+    addWorksheet(wb,"projectdata_cluster")
     writeDataTable(wb,sheet="projectdata_cluster",x=d_projectdata_cluster,tableName ="projectdata_cluster", startRow = 1)
-    writeDataTable(wb,sheet="prjdata_cluster_ben_pl_act",x=d_projectdata_cluster_ben_reached,tableName ="prjdata_cluster_ben_pl_act", startRow = 1)
+    #
+    addWorksheet(wb,"prjdata_cluster_ben_planned_act")
+    writeDataTable(wb,sheet="prjdata_cluster_ben_planned_act",x=d_projectdata_cluster_ben_reached_sum,tableName ="prjdata_cluster_ben_pl_act", startRow = 1)
     #write location project cluster budget and beneficiary disaggregated data to the table
+    addWorksheet(wb,"location_cluster_budget_ben")
     writeDataTable(wb,sheet="location_cluster_budget_ben",x=d_location_cluster,tableName ="location_cluster_budget_ben",startRow = 1)
     
     #
@@ -339,8 +356,11 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     project_cluster_org_type_list<-d_projectdata_cluster[,c("Project_Code","Cluster", "Org_Type")]
     project_cluster_org_type_list<-distinct(project_cluster_org_type_list)
     project_cluster_org_type<-project_cluster_org_type_list %>% 
-                      group_by(Org_Type) %>% 
-                      summarise(nProjects=n())
+                      group_by(Org_Type, Cluster) %>% 
+                      summarise(nProjects=n()) %>% 
+                      spread(key=Org_Type,value = nProjects) %>% 
+                      ungroup()
+            
     
     writeData(wb,sheet="summary",x="Number of projects by cluster and partner type",startRow = i_startrow-1)
     writeDataTable(wb,sheet="summary",x=project_cluster_org_type,tableName ="project_cluster_org_type",startRow = i_startrow)
@@ -367,6 +387,12 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     writeData(wb,sheet="summary",x="Number of partners by cluster and partner type",startRow = i_startrow-1)
     writeDataTable(wb,sheet="summary",x=partner_org_type_cluster,tableName ="num_partner_org_type_cluster",startRow = i_startrow)
     i_startrow<-i_startrow+nrow(partner_org_type_cluster)+5
+    
+#--------ACTUAL REACHED--------
+    #write in the file
+    writeData(wb,sheet="summary",x="Number of beneficiaries reached downloaded from API",startRow = i_startrow-1)
+    writeDataTable(wb,sheet="summary",x=d_projectdata_cluster_ben_reached_sum_bycluster,tableName ="num_ben_reached_cluster",startRow = i_startrow)
+    i_startrow<-i_startrow+nrow(d_projectdata_cluster_ben_reached_sum_bycluster)+5
     
     
 ###--LOCATION TABLE--
