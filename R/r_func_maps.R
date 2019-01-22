@@ -15,7 +15,7 @@ library(scales)
 #data<-nprojects_subdistrict
 make_admin3_basemap<-function(){
   #define join field, this can be made a paramer input
-  shp_path<-"./Data/GIS"
+  shp_path<-"./GIS/SHP"
   admin3_shp_name<-"syr_admbnda_adm3_uncs_unocha"
   admin1_shp_name<-"syr_admbnda_adm1_uncs_unocha"
   
@@ -76,7 +76,7 @@ make_admin3_map<-function(data){
   map_field<-"nProjects"
   legend_title<-"# of projects"
   ##set path of shapefile
-  shp_path<-"./Data/GIS"
+  shp_path<-"./GIS/SHP"
   admin3_shp_name<-"syr_admbnda_adm3_uncs_unocha"
   admin1_shp_name<-"syr_admbnda_adm1_uncs_unocha"
   
