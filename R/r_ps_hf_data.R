@@ -13,7 +13,7 @@ source("./R/r_func_maps.R")
 #----Define path------------------
 d_fname<-"./Data/HF/2018_ProjectFullDump_20190117.xlsx"
 d_fname_prjsummary<-"./Data/HF/ProjectSummary_20190114.xlsx"
-pcode_fname<-"./Data/Admin/syr_admin_180627.xlsx"
+pcode_fname<-"./GIS/syr_admin_180627.xlsx"
 
 #for API
 source("./R/r_func_cbpf_api.R")
