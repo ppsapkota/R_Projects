@@ -31,8 +31,11 @@ Sys.getenv("R_ZIPCMD","zip")
 
 
 path <- Sys.getenv("PATH")
-Sys.setenv("PATH" = paste(path, "C:/Rtools/bin", sep = ";"))
+#Sys.setenv("PATH" = paste(path, "C:/Rtools/bin", sep = ";"))
+Sys.setenv(PATH = paste(path, "C:/Rtools/bin/","C:/Rtools/mingw_64/bin", sep = ";"))
+Sys.setenv(BINPREF = "C:/Rtools/mingw_64/bin/")
 
-tempfile(tmpdir="C:/01_OCHA_TR/03_IM_Tools/R/R_Projects/Data/temp")
+
+tempfile(tmpdir="./Data/temp")
 
 

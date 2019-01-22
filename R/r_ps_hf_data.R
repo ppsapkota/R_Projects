@@ -9,9 +9,10 @@
 # 
 #Load libraries
 source("./R/r_ps_library_init.R")
+source("./R/r_func_maps.R")
 #----Define path------------------
-d_fname<-"./Data/HF/20181012_ProjectFullDump.xlsx"
-d_fname_prjsummary<-"./Data/HF/20181012_ProjectSummary.xlsx"
+d_fname<-"./Data/HF/2018_ProjectFullDump_20190117.xlsx"
+d_fname_prjsummary<-"./Data/HF/ProjectSummary_20190114.xlsx"
 pcode_fname<-"./Data/Admin/syr_admin_180627.xlsx"
 
 #for API
@@ -546,10 +547,10 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     
     
 #Gender Marker
-    gender_marker_projects_list<-distinct(d_projectdata[,c("Project_Code","Gender_Marker_Of_The_Project")])
+    gender_marker_projects_list<-distinct(d_projectdata[,c("Project_Code","Gender_Marker_Of_The_Project_/_Gender_with_Age_Marker_Code")])
     
     gender_marker_nprojects <- gender_marker_projects_list %>% 
-                               group_by(Gender_Marker_Of_The_Project) %>% 
+                               group_by(`Gender_Marker_Of_The_Project_/_Gender_with_Age_Marker_Code`) %>% 
                                summarise(nProjects = n()) %>% 
                                ungroup()
     
