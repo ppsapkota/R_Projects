@@ -11,7 +11,6 @@ suppressPackageStartupMessages(library(openxlsx)) #'write xlsx'
 
 #visuals
 library(RColorBrewer)
-
 #library(plotly)
 
 #---NETWORKS---------

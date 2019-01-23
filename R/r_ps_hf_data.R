@@ -407,11 +407,11 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
       
       #number of projects per subdistrict by allocation type
       nprojects_subdistrict_type<-location_project_list %>% 
-        group_by(Governorate,Governorate_Pcode,District, District_Pcode, SubDistrict,SubDistrict_Pcode,Allocation_Name) %>% 
-        summarise(nProjects=n()) %>%
-        spread(Allocation_Name,nProjects) %>% 
-        ungroup() %>% 
-        mutate(nProjects=rowSums(select(.,contains("Allocation")),na.rm=TRUE))
+                                  group_by(Governorate,Governorate_Pcode,District, District_Pcode, SubDistrict,SubDistrict_Pcode,Allocation_Name) %>% 
+                                  summarise(nProjects=n()) %>%
+                                  spread(Allocation_Name,nProjects) %>% 
+                                  ungroup() %>% 
+                                  mutate(nProjects=rowSums(select(.,contains("Allocation")),na.rm=TRUE))
       
       writeDataTable(wb,sheet="map_admin3_nproject_alloc_type",x=nprojects_subdistrict_type,tableName ="admin3_nprojects_alloc_type")
       
@@ -606,18 +606,12 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     #save file                     
     saveWorkbook(wb,save_summary_fname,overwrite = TRUE)
     
-
   ###Make maps
-  make_admin3_map(nprojects_subdistrict)
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+  p_map<-make_admin3_map(nprojects_subdistrict)
+  p_map
+  ggsave("./Data/HF/number_of_projects.pdf",plot=p_map,dpi = 300, units="in",scale=1,width=8.3, height=5.8)
+  
+  ###Open interactive maps
+  library(ggiraph)
+  make_admin3_map_interactive(nprojects_subdistrict)
     
