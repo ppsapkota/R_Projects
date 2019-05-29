@@ -11,9 +11,9 @@
 source("./R/r_ps_library_init.R")
 source("./R/r_func_maps.R")
 #----Define path------------------
-d_fname<-"./Data/HF/2018_ProjectFullDump_20190117.xlsx"
-d_fname_prjsummary<-"./Data/HF/ProjectSummary_20190114.xlsx"
-pcode_fname<-"./GIS/syr_admin_180627.xlsx"
+d_fname<-"./Data/HF/2019_SA1_ProjectFullDump_20190422.xlsx"
+d_fname_prjsummary<-"./Data/HF/2019_SA1_ProjectSummary_20190422.xlsx"
+pcode_fname<-"./GIS/syr_humanitarian_locations_20181219.xlsx"
 
 #for API
 source("./R/r_func_cbpf_api.R")
@@ -24,7 +24,8 @@ source("./R/r_func_cbpf_api.R")
 ##--Read data sheets-----------
 d_projectdata<-read_excel(d_fname,sheet="ProjectData")
 d_srp<-read_excel(d_fname,sheet="SRP")
-d_location<-read_excel(d_fname,sheet="Location")
+d_location_budget<-read_excel(d_fname,sheet="Location - Budget")
+d_location_ben<-read_excel(d_fname,sheet="Location - Affected Persons")
 d_cluster<-read_excel(d_fname,sheet="Cluster")
 
 #--Read PCODE file--
@@ -32,11 +33,18 @@ admin_pcode<-read_excel(pcode_fname,sheet="admin4")
 ##remove space in the field header
 names(d_projectdata)<-gsub(" ","_",names(d_projectdata))
 names(d_srp)<-gsub(" ","_",names(d_srp))
-names(d_location)<-gsub(" ","_",names(d_location))
+names(d_location_budget)<-gsub(" ","_",names(d_location_budget))
+names(d_location_ben)<-gsub(" ","_",names(d_location_ben))
 names(d_cluster)<-gsub(" ","_",names(d_cluster))
 
 # in the location list, remove locations which does not have funding allocation Percentage
-d_location<-as.data.frame(filter(d_location,!is.na(Percentage)))
+d_location_budget<-as.data.frame(filter(d_location_budget,!is.na(Percentage)))
+d_location_ben<-as.data.frame(filter(d_location_ben,!is.na(Percentage)))
+
+# Another filter for Education
+d_location_budget<-as.data.frame(filter(d_location_budget, SELECTED=="Yes"))
+d_location_ben<-as.data.frame(filter(d_location_ben,SELECTED=="Yes"))
+
 
 
 # # ##--FILTER PROJECTS for specific year
@@ -74,26 +82,40 @@ Allocation_Name<-as.data.frame(Allocation_Name)
 ##--
 d_projectdata<-cbind(Project_Time,Allocation_Name,d_projectdata)
 
-##--Location sheet----
-d_location<-as.data.frame(d_location)
-d_location<-d_location[1:10]
+##--Location sheet - Two location sheets----
+d_location_budget<-as.data.frame(d_location_budget)
+d_location_ben<-as.data.frame(d_location_ben)
+#extract information
+d_location_budget<-d_location_budget[1:7]
+d_location_ben<-d_location_ben[1:9]
 
-ind_col_perc<-which(names(d_location)=="Percentage")
-d_location$Percentage<-gsub("%",'',d_location$Percentage)
-d_location$Percentage<-as.numeric(d_location$Percentage)
+# ind_col_perc<-which(names(d_location)=="Percentage")
+# d_location$Percentage<-gsub("%",'',d_location$Percentage)
+# d_location$Percentage<-as.numeric(d_location$Percentage)
 
   #-location data
     for (i in 1:2){
-      d_location$Location<-str_replace_all(d_location$Location,c("\\?"=''," _"='',"  ->"="->","->  "="->"," ->"="->","-> "="->", "\\("='',"\\)"=''))
+      d_location_budget$Location<-str_replace_all(d_location_budget$Location,c("\\?"=''," _"='',"  ->"="->","->  "="->"," ->"="->","-> "="->", "\\("='',"\\)"=''))
+      d_location_ben$Location<-str_replace_all(d_location_ben$Location,c("\\?"=''," _"='',"  ->"="->","->  "="->"," ->"="->","-> "="->", "\\("='',"\\)"=''))
     }
-      d_location$Location<-gsub("Jebel Saman Aleppo", 'Jebel Saman',d_location$Location)
+    d_location_budget$Location<-gsub("Jebel Saman Aleppo", 'Jebel Saman',d_location_budget$Location)
+    d_location_ben$Location<-gsub("Jebel Saman Aleppo", 'Jebel Saman',d_location_ben$Location)
     #*split type column - Punya
-    d_location<-separate(d_location,Location,into = c("Governorate","District","SubDistrict","Community"),sep="->", remove=FALSE,extra="drop", fill="right")
+    d_location_budget<-separate(d_location_budget,Location,into = c("Governorate","District","SubDistrict","Community"),sep=">", remove=FALSE,extra="drop", fill="right")
+    #
+    d_location_ben<-separate(d_location_ben,Location,into = c("Governorate","District","SubDistrict","Community"),sep=">", remove=FALSE,extra="drop", fill="right")
     #trim texts
-    d_location$Governorate<-str_trim(d_location$Governorate, side=c("both"))
-    d_location$District<-str_trim(d_location$District, side=c("both"))
-    d_location$SubDistrict<-str_trim(d_location$SubDistrict, side=c("both"))
-    d_location$Community<-str_trim(d_location$Community, side=c("both"))
+    d_location_budget$Governorate<-str_trim(d_location_budget$Governorate, side=c("both"))
+    d_location_budget$District<-str_trim(d_location_budget$District, side=c("both"))
+    d_location_budget$SubDistrict<-str_trim(d_location_budget$SubDistrict, side=c("both"))
+    d_location_budget$Community<-str_trim(d_location_budget$Community, side=c("both"))
+    
+    ###
+    d_location_ben$Governorate<-str_trim(d_location_ben$Governorate, side=c("both"))
+    d_location_ben$District<-str_trim(d_location_ben$District, side=c("both"))
+    d_location_ben$SubDistrict<-str_trim(d_location_ben$SubDistrict, side=c("both"))
+    d_location_ben$Community<-str_trim(d_location_ben$Community, side=c("both"))
+    
     
     #join with the admin names
     admin1<-distinct(admin_pcode[,c("admin1Pcode","admin1Name_en")])
@@ -101,16 +123,54 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     admin3<-distinct(admin_pcode[,c("admin3Pcode","admin3Name_en","admin1Pcode")])
     admin4<-distinct(admin_pcode[,c("admin4Pcode","admin4Name_en","admin3Pcode")])
     #Join with the location table one by one
-    d_location<-left_join(d_location,admin1,by=c("Governorate"="admin1Name_en"))
-    d_location<-left_join(d_location,admin2,by=c("District"="admin2Name_en"))
-    d_location<-left_join(d_location,admin3,by=c("admin1Pcode"="admin1Pcode","SubDistrict"="admin3Name_en"))
-    d_location<-left_join(d_location,admin4,by=c("admin3Pcode"="admin3Pcode","Community"="admin4Name_en"))
-    d_location<-as.data.frame(d_location)
+    d_location_budget<-left_join(d_location_budget,admin1,by=c("Governorate"="admin1Name_en"))
+    d_location_budget<-left_join(d_location_budget,admin2,by=c("District"="admin2Name_en"))
+    d_location_budget<-left_join(d_location_budget,admin3,by=c("admin1Pcode"="admin1Pcode","SubDistrict"="admin3Name_en"))
+    d_location_budget<-left_join(d_location_budget,admin4,by=c("admin3Pcode"="admin3Pcode","Community"="admin4Name_en"))
+    d_location_budget<-as.data.frame(d_location_budget)
     #rename columns
-    d_location<- rename(d_location,"Governorate_Pcode"="admin1Pcode")
-    d_location<- rename(d_location,"District_Pcode"="admin2Pcode")
-    d_location<- rename(d_location,"SubDistrict_Pcode"="admin3Pcode")
-    d_location<- rename(d_location,"Community_Pcode"="admin4Pcode")
+    d_location_budget<- rename(d_location_budget,"Governorate_Pcode"="admin1Pcode")
+    d_location_budget<- rename(d_location_budget,"District_Pcode"="admin2Pcode")
+    d_location_budget<- rename(d_location_budget,"SubDistrict_Pcode"="admin3Pcode")
+    d_location_budget<- rename(d_location_budget,"Community_Pcode"="admin4Pcode")
+    ###---REPEAT--------
+    #Join with the location table one by one
+    d_location_ben<-left_join(d_location_ben,admin1,by=c("Governorate"="admin1Name_en"))
+    d_location_ben<-left_join(d_location_ben,admin2,by=c("District"="admin2Name_en"))
+    d_location_ben<-left_join(d_location_ben,admin3,by=c("admin1Pcode"="admin1Pcode","SubDistrict"="admin3Name_en"))
+    d_location_ben<-left_join(d_location_ben,admin4,by=c("admin3Pcode"="admin3Pcode","Community"="admin4Name_en"))
+    d_location_ben<-as.data.frame(d_location_ben)
+    #rename columns
+    d_location_ben<- rename(d_location_ben,"Governorate_Pcode"="admin1Pcode")
+    d_location_ben<- rename(d_location_ben,"District_Pcode"="admin2Pcode")
+    d_location_ben<- rename(d_location_ben,"SubDistrict_Pcode"="admin3Pcode")
+    d_location_ben<- rename(d_location_ben,"Community_Pcode"="admin4Pcode")
+    
+    ## bring additional information to location budget and location beneficiary table
+    d_location_budget<-d_location_budget %>% 
+                       left_join(select(d_projectdata,
+                                        c("Project_Time","Allocation_Name","Project_Code","Allocation_type","Organization","Org_Type")), 
+                                        by=c("ChfProjectCode"="Project_Code")
+                       )
+    
+    #
+    d_location_ben<-d_location_ben %>% 
+                      left_join(select(d_projectdata,
+                                       c("Project_Time","Allocation_Name","Project_Code","Allocation_type","Organization","Org_Type")), 
+                                by=c("ChfProjectCode"="Project_Code")
+                      )
+    
+    d_location_ben<- rename(d_location_ben,"Cluster"="ClusterName")
+    
+    #
+    d_location_ben_cluster_sum<-d_location_ben %>%
+                                group_by(ChfProjectCode,Cluster,Governorate_Pcode,District_Pcode,SubDistrict_Pcode,Community_Pcode) %>% 
+                                summarise(Men=sum(Men,na.rm = TRUE),
+                                          Women=sum(Women,na.rm = TRUE),
+                                          Boys=sum(Boys,na.rm = TRUE),
+                                          Girls=sum(Girls,na.rm = TRUE)
+                                          ) %>% 
+                                ungroup()
     #reorder fields
     #d_location<-select(d_location,1:6,15:18,7:14)
     #d_location<-select(d_location,1:6,15:18,7:14)
@@ -131,11 +191,11 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
 
 # ###############----PROJECT SUMMARY-------------------------------------------------------------------###########################    
     #---read project summary--
-    d_projectsummary <-read_excel(d_fname_prjsummary,sheet="ProjectData")
+    #d_projectsummary <-read_excel(d_fname_prjsummary,sheet="ProjectData")
 ###either take it from here or from API
-    d_projectsummary<-d_projectsummary %>% 
-                      rename("ChfProjectCode"="Fund Code","ProjectStatus"="Project Status")
-    d_projectsummary_prjstatus<-distinct(d_projectsummary[,c("ChfProjectCode","ProjectStatus")])
+    # d_projectsummary<-d_projectsummary %>% 
+    #                   rename("ChfProjectCode"="Fund Code","ProjectStatus"="Project Status")
+    d_projectsummary_prjstatus<-distinct(d_projectdata[,c("Project_Code","Project_Status")])
     d_projectdata_cluster_ben_reached<-data.frame("Project_Code"=character())
 #------------API Project cluster planned/actual-------------------
     #Beneficiary reached - project report
@@ -208,36 +268,36 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     
 ###--MAIN TABLE ----->>>>>LOCATION - CLUSTER - BUDGET - BENEFICIARY
     #--bring Cluster to Location
-    d_cluster_t<-d_cluster #temp table
-    names(d_cluster_t)<-gsub("Percentage","Percentage_C",names(d_cluster_t))
-    d_location_cluster<-inner_join(d_location,d_cluster_t,by=c("ChfProjectCode"="CHF_Code"))
-    
-    #bring project status to location table
-    d_location_cluster<-left_join(d_location_cluster,d_projectsummary_prjstatus, by=c("ChfProjectCode"="ChfProjectCode"))
-    
+    # d_cluster_t<-d_cluster #temp table
+    # names(d_cluster_t)<-gsub("Percentage","Percentage_C",names(d_cluster_t))
+    # d_location_cluster<-inner_join(d_location,d_cluster_t,by=c("ChfProjectCode"="CHF_Code"))
+    # 
+    # #bring project status to location table
+    # d_location_cluster<-left_join(d_location_cluster,d_projectsummary_prjstatus, by=c("ChfProjectCode"="ChfProjectCode"))
+    # 
     
     #bring project budget to location
     #d_project_budget<-distinct(d_projectdata[,c("Project_Code","Project_Time","Allocation_Name","Allocation_type","Organization", "Org_Type","Budget","ProjectStatus")])
-    d_project_budget<-distinct(d_projectdata[,c("Project_Code","Project_Time","Allocation_Name","Allocation_type","Organization", "Org_Type","Budget", "Project_Status")])
-    d_location_cluster<-inner_join(d_location_cluster,d_project_budget,by=c("ChfProjectCode"="Project_Code"))
+    #d_project_budget<-distinct(d_projectdata[,c("Project_Code","Project_Time","Allocation_Name","Allocation_type","Organization", "Org_Type","Budget", "Project_Status")])
+    #d_location_cluster<-inner_join(d_location_cluster,d_project_budget,by=c("ChfProjectCode"="Project_Code"))
     #budget per cluster per location
-    d_location_cluster$Budget_Loc_C<-as.numeric(d_location_cluster$Budget)*as.numeric(d_location_cluster$Percentage)/100*as.numeric(d_location_cluster$Percentage_C)/100
+    #d_location_cluster$Budget_Loc_C<-as.numeric(d_location_cluster$Budget)*as.numeric(d_location_cluster$Percentage)/100*as.numeric(d_location_cluster$Percentage_C)/100
     #beneficiary per cluste per location note - Percentage in location table is for Budget distribution
-    d_location_cluster$Men_Loc_C<-round(as.numeric(d_location_cluster$Men)*as.numeric(d_location_cluster$Percentage_C)/100)
-    d_location_cluster$Women_Loc_C<-round(as.numeric(d_location_cluster$Women)*as.numeric(d_location_cluster$Percentage_C)/100)
-    d_location_cluster$Boys_Loc_C<-round(as.numeric(d_location_cluster$Boys)*as.numeric(d_location_cluster$Percentage_C)/100)
-    d_location_cluster$Girls_Loc_C<-round(as.numeric(d_location_cluster$Girls)*as.numeric(d_location_cluster$Percentage_C)/100)
+    #d_location_cluster$Men_Loc_C<-round(as.numeric(d_location_cluster$Men)*as.numeric(d_location_cluster$Percentage_C)/100)
+    #d_location_cluster$Women_Loc_C<-round(as.numeric(d_location_cluster$Women)*as.numeric(d_location_cluster$Percentage_C)/100)
+    #d_location_cluster$Boys_Loc_C<-round(as.numeric(d_location_cluster$Boys)*as.numeric(d_location_cluster$Percentage_C)/100)
+    #d_location_cluster$Girls_Loc_C<-round(as.numeric(d_location_cluster$Girls)*as.numeric(d_location_cluster$Percentage_C)/100)
     
 ###--CHECK location and Project Beneficiaries
     #sum of location beneficiaries by projects
-    d_location_prj_ben_sum<-d_location %>% 
+    d_location_prj_ben_sum<-d_location_ben %>% 
                             group_by(ChfProjectCode) %>% 
                             summarise(loc_men_sum=sum(Men,na.rm=TRUE),
                                       loc_women_sum=sum(Women,na.rm=TRUE),
                                       loc_boys_sum=sum(Boys,na.rm=TRUE),
                                       loc_girls_sum=sum(Girls,na.rm=TRUE)) %>% 
                             ungroup()
-    
+    #
     d_projectdata_loc_ben_compare<-left_join(d_projectdata,d_location_prj_ben_sum,by=c("Project_Code"="ChfProjectCode"))
     #check differences
     d_projectdata_loc_ben_compare$men_chk<-d_projectdata_loc_ben_compare$Beneficiaries_Men - d_projectdata_loc_ben_compare$loc_men_sum
@@ -251,19 +311,26 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     save_fname<-gsub(".xlsx","_updated.xlsx",d_fname)
     wb<-createWorkbook()
     addWorksheet(wb,"ProjectData")
-    addWorksheet(wb,"Location")
+    addWorksheet(wb,"Location_Budget")
+    addWorksheet(wb,"Location_Beneficiary")
     addWorksheet(wb,"SRP")
     addWorksheet(wb,"Cluster")
     #
     writeDataTable(wb,sheet="ProjectData",x=d_projectdata,tableName ="ProjectData")
-    writeDataTable(wb,sheet="Location",x=d_location,tableName = "Location")
+    writeDataTable(wb,sheet="Location_Budget",x=d_location_budget,tableName = "LocationBudget")
+    writeDataTable(wb,sheet="Location_Beneficiary",x=d_location_ben,tableName = "LocationBeneficiary")
     writeDataTable(wb,sheet="SRP",x=d_srp,tableName = "SRP")
     writeDataTable(wb,sheet="Cluster",x=d_cluster,tableName = "Cluster")
     #
     saveWorkbook(wb,save_fname,overwrite = TRUE)
 ##--ANALYSIS SUMMARY TABLES----
-    save_summary_fname<-gsub(".xlsx","_summary.xlsx",d_fname)
+    save_summary_fname<-gsub(".xlsx","_summary_updated.xlsx",d_fname)
     wb<-createWorkbook()
+    addWorksheet(wb,"ProjectData")
+    addWorksheet(wb,"Location_Budget")
+    addWorksheet(wb,"Location_Beneficiary")
+    addWorksheet(wb,"SRP")
+    addWorksheet(wb,"Cluster")
     addWorksheet(wb,"summary")
     addWorksheet(wb,"srp_objectives_cluster_budget")
     addWorksheet(wb,"Summary_Partners")
@@ -276,8 +343,20 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     addWorksheet(wb,"map_admin3_npartner")
     addWorksheet(wb,"map_admin3_npartner_type")
     addWorksheet(wb,"map_admin3_npartner_cluster")
+    addWorksheet(wb,"map_admin3_nproject_cluster")
     addWorksheet(wb,"map_admin3_cluster_ben")
     addWorksheet(wb,"map_admin3_cluster_budget")
+    addWorksheet(wb,"map_admin4_cluster_budget")
+    addWorksheet(wb,"map_admin4_cluster_ben")
+    addWorksheet(wb,"map_admin4_nprojects")
+    addWorksheet(wb,"map_admin4_nprojects_cluster")
+    
+    #write data
+    writeDataTable(wb,sheet="ProjectData",x=d_projectdata,tableName ="ProjectData")
+    writeDataTable(wb,sheet="Location_Budget",x=d_location_budget,tableName = "LocationBudget")
+    writeDataTable(wb,sheet="Location_Beneficiary",x=d_location_ben,tableName = "LocationBeneficiary")
+    writeDataTable(wb,sheet="SRP",x=d_srp,tableName = "SRP")
+    writeDataTable(wb,sheet="Cluster",x=d_cluster,tableName = "Cluster")
     
     #write project cluster budget and beneficiary disaggregated data
     addWorksheet(wb,"projectdata_cluster")
@@ -286,8 +365,8 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     addWorksheet(wb,"prjdata_cluster_ben_planned_act")
     writeDataTable(wb,sheet="prjdata_cluster_ben_planned_act",x=d_projectdata_cluster_ben_reached_sum,tableName ="prjdata_cluster_ben_pl_act", startRow = 1)
     #write location project cluster budget and beneficiary disaggregated data to the table
-    addWorksheet(wb,"location_cluster_budget_ben")
-    writeDataTable(wb,sheet="location_cluster_budget_ben",x=d_location_cluster,tableName ="location_cluster_budget_ben",startRow = 1)
+    #addWorksheet(wb,"location_cluster_budget_ben")
+    #writeDataTable(wb,sheet="location_cluster_budget_ben",x=d_location_cluster,tableName ="location_cluster_budget_ben",startRow = 1)
     
     #
     i_startrow<-1
@@ -396,6 +475,7 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     
     
 ###--LOCATION TABLE--
+    d_location_cluster<-d_location_budget # with new export starting from 2019, it is not required to build d_location_cluster table.
 ###-projects per subdistrict
     location_project_list<-distinct(d_location_cluster[,c("ChfProjectCode","Governorate","District", "SubDistrict", "Governorate_Pcode","District_Pcode","SubDistrict_Pcode", "Allocation_Name")])
       #number of projects per subdistrict
@@ -415,6 +495,35 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
       
       writeDataTable(wb,sheet="map_admin3_nproject_alloc_type",x=nprojects_subdistrict_type,tableName ="admin3_nprojects_alloc_type")
       
+      #---NEW number of projects per subdistrict by cluster
+      location_project_list_cluster<-distinct(d_location_cluster[,c("ChfProjectCode","Cluster","Governorate","District", "SubDistrict", "Governorate_Pcode","District_Pcode","SubDistrict_Pcode")])
+      nprojects_subdistrict_cluster<-location_project_list_cluster %>% 
+                                      group_by(Governorate,Governorate_Pcode,District, District_Pcode, SubDistrict,SubDistrict_Pcode,Cluster) %>% 
+                                      summarise(nProjects=n()) %>%
+                                      spread(Cluster,nProjects) %>% 
+                                      ungroup()
+      
+      writeDataTable(wb,sheet="map_admin3_nproject_cluster",x=nprojects_subdistrict_cluster,tableName ="map_admin3_nproject_cluster")
+# PROJECT per location ADMIN4
+      #number of projects per admin4 by allocation type
+      location_project_list_admin4<-distinct(d_location_cluster[,c("ChfProjectCode","Governorate","District", "SubDistrict", "Governorate_Pcode","District_Pcode","SubDistrict_Pcode","Community","Community_Pcode","Allocation_Name")])
+      nprojects_admin4<-location_project_list_admin4 %>% 
+                                group_by(Governorate,Governorate_Pcode,District, District_Pcode, SubDistrict,SubDistrict_Pcode,Community,Community_Pcode,Allocation_Name) %>% 
+                                summarise(nProjects=n()) %>%
+                                ungroup()
+                              
+      writeDataTable(wb,sheet="map_admin4_nprojects",x=nprojects_admin4,tableName ="map_admin4_nprojects") 
+      
+# PROJECT per location  per cluster  ADMIN4
+      #number of projects per admin4 by allocation type
+      location_project_list_cluster_admin4<-distinct(d_location_cluster[,c("ChfProjectCode","Cluster","Governorate","District", "SubDistrict", "Governorate_Pcode","District_Pcode","SubDistrict_Pcode","Community","Community_Pcode","Allocation_Name")])
+      nprojects_admin4_cluster<-location_project_list_cluster_admin4 %>% 
+                                group_by(Governorate,Governorate_Pcode,District, District_Pcode, SubDistrict,SubDistrict_Pcode,Community,Community_Pcode,Cluster) %>% 
+                                summarise(nProjects=n()) %>%
+                                spread(Cluster,nProjects) %>% 
+                                ungroup()
+                      
+      writeDataTable(wb,sheet="map_admin4_nprojects_cluster",x=nprojects_admin4_cluster,tableName ="map_admin4_nprojects_cluster") 
       
 ###-PARTNERS per subdistrict      
       
@@ -498,7 +607,7 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
 ###-BUDGET sum of budget by governorate
     location_budget_gov<-d_location_cluster %>% 
                             group_by(Governorate_Pcode,Governorate) %>% 
-                            summarise(Location_Budget=sum(Budget_Loc_C, na.rm=TRUE))
+                            summarise(Location_Budget=sum(Budget_Distribution, na.rm=TRUE))
     location_budget_gov$Location_Budget_m<-location_budget_gov$Location_Budget/1000000
     writeDataTable(wb,sheet="map_admin1_budget",x=location_budget_gov,tableName ="admin1_budget") 
     
@@ -506,17 +615,48 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     ###-sum of budget by governorate
     location_budget_gov<-d_location_cluster %>% 
       group_by(Governorate_Pcode,Governorate,Cluster) %>% 
-      summarise(Location_Budget=sum(Budget_Loc_C, na.rm=TRUE)) %>% 
+      summarise(Location_Budget=sum(Budget_Distribution, na.rm=TRUE)) %>% 
       spread(Cluster,Location_Budget)
       writeDataTable(wb,sheet="map_admin1_cluster_budget",x=location_budget_gov,tableName ="admin1_cluster_budget") 
     
+    ###--sum of Budget by subdistrict per cluster
+    admin3_cluster_budget<-d_location_cluster %>% 
+                           group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>% 
+                           summarise(Location_Budget=sum(Budget_Distribution,na.rm=TRUE)) %>% 
+                           ungroup()
+    #now pivot
+    admin3_cluster_budget_pivot<-admin3_cluster_budget %>%
+      group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>%
+      spread(Cluster,Location_Budget) %>% 
+      ungroup()
+    #add total budget field
+    admin3_cluster_budget_pivot$Location_Budget<-apply(admin3_cluster_budget_pivot[,-1:-6],1,function(x, na.rm=FALSE) {sum(x, na.rm=TRUE)})
+    writeDataTable(wb,sheet="map_admin3_cluster_budget",x=admin3_cluster_budget_pivot,tableName ="admin3_cluster_budget")   
+      
+###Admin4 Sum of projects budget by Admin4
+    ###--sum of Budget by community per cluster
+    admin4_cluster_budget<-d_location_cluster %>% 
+                            group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Community,Community_Pcode,Cluster) %>% 
+                            summarise(Location_Budget=sum(Budget_Distribution,na.rm=TRUE)) %>% 
+                            ungroup()
+    #now pivot
+    admin4_cluster_budget_pivot<-admin4_cluster_budget %>%
+                                 group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Community,Community_Pcode,Cluster) %>%
+                                  spread(Cluster,Location_Budget) %>% 
+                                  ungroup()
+    #add total budget field
+    admin4_cluster_budget_pivot$Location_Budget<-apply(admin4_cluster_budget_pivot[,-1:-8],1,function(x, na.rm=FALSE) {sum(x, na.rm=TRUE)})
+    writeDataTable(wb,sheet="map_admin4_cluster_budget",x=admin4_cluster_budget_pivot,tableName ="admin4_cluster_budget")   
+    
+    
+###-------LOCATION BENEFICIARY-------------
     ###--sum of beneficiaries by subdistrict per cluster
-    admin3_cluster_beneficiary<-d_location_cluster %>% 
+    admin3_cluster_beneficiary<-d_location_ben %>% 
                                 group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>% 
-                                summarise(Men=sum(Men_Loc_C,na.rm=TRUE),
-                                          Women=sum(Women_Loc_C,na.rm=TRUE),
-                                          Boys=sum(Boys_Loc_C,na.rm=TRUE),
-                                          Girls=sum(Girls_Loc_C,na.rm=TRUE)) %>% 
+                                summarise(Men=sum(Men,na.rm=TRUE),
+                                          Women=sum(Women,na.rm=TRUE),
+                                          Boys=sum(Boys,na.rm=TRUE),
+                                          Girls=sum(Girls,na.rm=TRUE)) %>% 
                                 ungroup() %>%
                                 mutate(Total=rowSums(.[-1:-7],na.rm=TRUE))
     #Pivot
@@ -530,23 +670,30 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
     admin3_cluster_beneficiary_pivot$Max_Ben<-apply(admin3_cluster_beneficiary_pivot[,-1:-6],1,function(x, na.rm=FALSE) {max(x, na.rm=TRUE)})
     writeDataTable(wb,sheet="map_admin3_cluster_ben",x=admin3_cluster_beneficiary_pivot,tableName ="admin3_cluster_ben")
     
-    ###--sum of Budget by subdistrict per cluster
-    admin3_cluster_budget<-d_location_cluster %>% 
-      group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>% 
-      summarise(Location_Budget=sum(Budget_Loc_C,na.rm=TRUE)) %>% 
+  ###--sum of beneficiaries by community per cluster
+    admin4_cluster_beneficiary<-d_location_ben %>% 
+                                group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Community,Community_Pcode,Cluster) %>% 
+                                summarise(Men=sum(Men,na.rm=TRUE),
+                                          Women=sum(Women,na.rm=TRUE),
+                                          Boys=sum(Boys,na.rm=TRUE),
+                                          Girls=sum(Girls,na.rm=TRUE)) %>% 
+                                ungroup() %>%
+                                mutate(Total=rowSums(.[-1:-9],na.rm=TRUE))
+    #Pivot
+    #admin4_cluster_beneficiary_pivot<-select(admin3_cluster_beneficiary,1:3,8)
+    admin4_cluster_beneficiary_pivot<-admin4_cluster_beneficiary %>%
+      select(1:9,14) %>% 
+      group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>%
+      spread(Cluster,Total) %>% 
       ungroup()
     
-    #now pivot
-    admin3_cluster_budget_pivot<-admin3_cluster_budget %>%
-      group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>%
-      spread(Cluster,Location_Budget) %>% 
-      ungroup()
-    #add total budget field
-    admin3_cluster_budget_pivot$Location_Budget<-apply(admin3_cluster_budget_pivot[,-1:-6],1,function(x, na.rm=FALSE) {sum(x, na.rm=TRUE)})
-    writeDataTable(wb,sheet="map_admin3_cluster_budget",x=admin3_cluster_budget_pivot,tableName ="admin3_cluster_budget") 
+    admin4_cluster_beneficiary_pivot$Max_Ben<-apply(admin4_cluster_beneficiary_pivot[,-1:-8],1,function(x, na.rm=FALSE) {max(x, na.rm=TRUE)})
+    writeDataTable(wb,sheet="map_admin4_cluster_ben",x=admin4_cluster_beneficiary_pivot,tableName ="admin4_cluster_ben")
+    
     
 #Strategic Objectives
-    d_srp$srp_objectives<-substr(d_srp$`Strategic_Response_Plan_(SRP)_objectives`,1,26)
+    #d_srp$srp_objectives<-substr(d_srp$`Strategic_Response_Plan_(SRP)_objectives`,1,26)
+    d_srp$srp_objectives<-d_srp$`Strategic_Response_Plan_(SRP)_objectives`
     #bring budget to each srp objectives
     project_cluster_budget<-d_projectdata_cluster[,c("Allocation_Name","Project_Code","Organization","Org_Type", "Cluster","Budget_Cluster")]
     
@@ -610,8 +757,6 @@ d_location$Percentage<-as.numeric(d_location$Percentage)
   p_map<-make_admin3_map(nprojects_subdistrict)
   p_map
   ggsave("./Data/HF/number_of_projects.pdf",plot=p_map,dpi = 300, units="in",scale=1,width=8.3, height=5.8)
-  
   ###Open interactive maps
   library(ggiraph)
   make_admin3_map_interactive(nprojects_subdistrict)
-    
