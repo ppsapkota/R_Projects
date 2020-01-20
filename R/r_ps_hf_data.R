@@ -11,8 +11,8 @@
 source("./R/r_ps_library_init.R")
 source("./R/r_func_maps.R")
 #----Define path------------------
-d_fname<-"./Data/HF/2019_SA1_ProjectFullDump_20190422.xlsx"
-d_fname_prjsummary<-"./Data/HF/2019_SA1_ProjectSummary_20190422.xlsx"
+d_fname<-"./Data/HF/20200108_ProjectFullDump_SA2_withASO.xlsx"
+d_fname_prjsummary<-"./Data/HF/20200108_ProjectSummary_SA2.xlsx"
 pcode_fname<-"./GIS/syr_humanitarian_locations_20181219.xlsx"
 
 #for API
@@ -38,12 +38,13 @@ names(d_location_ben)<-gsub(" ","_",names(d_location_ben))
 names(d_cluster)<-gsub(" ","_",names(d_cluster))
 
 # in the location list, remove locations which does not have funding allocation Percentage
-d_location_budget<-as.data.frame(filter(d_location_budget,!is.na(Percentage)))
-d_location_ben<-as.data.frame(filter(d_location_ben,!is.na(Percentage)))
+d_location_budget<-as.data.frame(filter(d_location_budget,!is.na(Percentage) & Percentage>0))
+
+d_location_ben<-as.data.frame(filter(d_location_ben,!is.na(Percentage) & Percentage>0))
 
 # Another filter for Education
-d_location_budget<-as.data.frame(filter(d_location_budget, SELECTED=="Yes"))
-d_location_ben<-as.data.frame(filter(d_location_ben,SELECTED=="Yes"))
+#d_location_budget<-as.data.frame(filter(d_location_budget, SELECTED=="Yes"))
+#d_location_ben<-as.data.frame(filter(d_location_ben,SELECTED=="Yes"))
 
 
 
@@ -87,7 +88,7 @@ d_location_budget<-as.data.frame(d_location_budget)
 d_location_ben<-as.data.frame(d_location_ben)
 #extract information
 d_location_budget<-d_location_budget[1:7]
-d_location_ben<-d_location_ben[1:9]
+d_location_ben<-d_location_ben[1:13]
 
 # ind_col_perc<-which(names(d_location)=="Percentage")
 # d_location$Percentage<-gsub("%",'',d_location$Percentage)
@@ -171,6 +172,18 @@ d_location_ben<-d_location_ben[1:9]
                                           Girls=sum(Girls,na.rm = TRUE)
                                           ) %>% 
                                 ungroup()
+    #location budget srp
+    d_location_budget_srp<- d_location_budget %>% 
+                            left_join(d_srp, by=c("ChfProjectCode"="CHF_Code", "Cluster"="Cluster")) 
+                            
+    d_location_budget_srp$Budget_Distribution_Loc_SRP <- d_location_budget_srp$Budget_Distribution*d_location_budget_srp$Percentage_of_activities/100
+                            
+    #location budget beneficiaries srp
+    d_location_ben_srp<- d_location_ben %>% 
+      left_join(d_srp, by=c("ChfProjectCode"="CHF_Code", "Cluster"="Cluster")) 
+    
+    d_location_ben_srp$Budget_Distribution_Loc_SRP <- d_location_ben_srp$Budget_Distribution*d_location_ben_srp$Percentage_of_activities/100
+    
     #reorder fields
     #d_location<-select(d_location,1:6,15:18,7:14)
     #d_location<-select(d_location,1:6,15:18,7:14)
@@ -330,6 +343,8 @@ d_location_ben<-d_location_ben[1:9]
     addWorksheet(wb,"Location_Budget")
     addWorksheet(wb,"Location_Beneficiary")
     addWorksheet(wb,"SRP")
+    addWorksheet(wb,"Location_Budget_SRP")
+    addWorksheet(wb,"Location_Beneficiary_SRP")
     addWorksheet(wb,"Cluster")
     addWorksheet(wb,"summary")
     addWorksheet(wb,"srp_objectives_cluster_budget")
@@ -356,6 +371,8 @@ d_location_ben<-d_location_ben[1:9]
     writeDataTable(wb,sheet="Location_Budget",x=d_location_budget,tableName = "LocationBudget")
     writeDataTable(wb,sheet="Location_Beneficiary",x=d_location_ben,tableName = "LocationBeneficiary")
     writeDataTable(wb,sheet="SRP",x=d_srp,tableName = "SRP")
+    writeDataTable(wb,sheet="Location_Budget_SRP",x=d_location_budget_srp,tableName = "Location_Budget_SRP")
+    writeDataTable(wb,sheet="Location_Beneficiary_SRP",x=d_location_ben_srp,tableName = "Location_Beneficiary_SRP")
     writeDataTable(wb,sheet="Cluster",x=d_cluster,tableName = "Cluster")
     
     #write project cluster budget and beneficiary disaggregated data
@@ -450,8 +467,10 @@ d_location_ben<-d_location_ben[1:9]
     partner_org_type_list<-distinct(d_projectdata_cluster[,c("Organization","Org_Type")])
     partner_org_type<-partner_org_type_list %>% 
       group_by(Org_Type) %>% 
-      summarise(nPartner=n()) %>% 
+      summarise(nPartner=n()) %>%
+      arrange(desc(Org_Type)) %>% 
       ungroup()
+    
     writeDataTable(wb,sheet="summary",x=partner_org_type,tableName ="partner_org_type",startRow = i_startrow)
     i_startrow<-i_startrow+nrow(partner_org_type)+5
   
@@ -605,9 +624,16 @@ d_location_ben<-d_location_ben[1:9]
       i_startrow<-i_startrow+nrow(partner_n_admin1_org_type)+5
       
 ###-BUDGET sum of budget by governorate
+    #change the type to number
+    d_location_cluster<-d_location_cluster %>% 
+                        mutate_at(vars(Budget_Distribution, Percentage),funs(as.numeric))
+      
+      
+    #  
     location_budget_gov<-d_location_cluster %>% 
                             group_by(Governorate_Pcode,Governorate) %>% 
                             summarise(Location_Budget=sum(Budget_Distribution, na.rm=TRUE))
+    #
     location_budget_gov$Location_Budget_m<-location_budget_gov$Location_Budget/1000000
     writeDataTable(wb,sheet="map_admin1_budget",x=location_budget_gov,tableName ="admin1_budget") 
     
@@ -750,13 +776,56 @@ d_location_ben<-d_location_ben[1:9]
     writeDataTable(wb,sheet="summary",x=environment_marker_nprojects,tableName ="environment_marker_nprojects",startRow = i_startrow)
     i_startrow = i_startrow + nrow(environment_marker_nprojects) +5
     
-    #save file                     
+### for ASO
+    d_aso<-read_excel(d_fname,sheet="ASO")
+    names(d_aso)<-gsub(" ","_",names(d_aso))
+    d_aso<-d_aso[,c("CHF_Code","Cluster","Sub_Cluster","ASO","Percentage_ASO")]
+    #bring ASO to location budget
+    d_location_budget_aso<-left_join(d_location_budget,d_aso, by=c("ChfProjectCode"="CHF_Code","Cluster"="Cluster"))
+    #make sure data is in numeric format
+    
+    d_location_budget_aso$Budget_Distribution<-as.numeric(as.character(d_location_budget_aso$Budget_Distribution))
+    
+    #estimate budget distribution
+    d_location_budget_aso$Budget_Cluster_ASO<-d_location_budget_aso$Budget_Distribution*d_location_budget_aso$Percentage_ASO/100
+    #
+    addWorksheet(wb,"location_cluster_budget_aso")
+    writeDataTable(wb,sheet="location_cluster_budget_aso",x=d_location_budget_aso,tableName ="d_location_budget_aso")
+    
+    #summarize the budget
+    aso_budget<-d_location_budget_aso %>% 
+      group_by(ASO) %>% 
+      summarise(budget_by_aso=sum(Budget_Cluster_ASO)) %>% 
+      ungroup()
+    #
+    writeData(wb,sheet="summary",x="Budget by Allocation Strategy Objective", startRow = i_startrow-1)
+    writeDataTable(wb,sheet="summary",x=aso_budget,tableName ="location_cluster_budget_aso",startRow = i_startrow)
+    
+    
+  #save file                     
     saveWorkbook(wb,save_summary_fname,overwrite = TRUE)
     
   ###Make maps
   p_map<-make_admin3_map(nprojects_subdistrict)
   p_map
-  ggsave("./Data/HF/number_of_projects.pdf",plot=p_map,dpi = 300, units="in",scale=1,width=8.3, height=5.8)
+  
+  map_save_fname<-gsub(".xlsx","_number_of_projects.pdf",d_fname)
+  
+  ggsave(map_save_fname,plot=p_map,dpi = 300, units="in",scale=1,width=8.3, height=5.8)
   ###Open interactive maps
   library(ggiraph)
   make_admin3_map_interactive(nprojects_subdistrict)
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  

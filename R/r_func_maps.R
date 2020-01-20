@@ -68,6 +68,11 @@ make_admin3_basemap<-function(){
 
 
 make_admin3_map<-function(data){
+  #for limit of the map
+  x_lim<-c(35.5,38.8)
+  y_lim<-c(35.2,37.1)
+  
+  #for dataset
   dataset<-data##assign data to map
   d_map_admin3<-data
   #define join field, this can be made a paramer input
@@ -155,10 +160,10 @@ make_admin3_map<-function(data){
     )
   p<-ggplot()+
     geom_sf(data=map_admin3, aes(fill=map_class_interval),color='grey85', size=0.1)+
-    geom_sf(data=map_admin1,fill=NA, color='grey70', size=0.6)+
+    geom_sf(data=map_admin1,fill=NA, color='grey70', size=1.2)+
     #geom_sf(data=map_admin1_centroid)+
     #geom_point(data=map_admin1_centroid,aes(x=as.numeric(long),y=as.numeric(lat)))+
-    geom_text(data=map_admin1_centroid,aes(x=as.numeric(long),y=as.numeric(lat),label=str_wrap(admin1Na_1,width=12)),hjust =0.5,vjust=0, nudge_x = 0.0,check_overlap = FALSE, size=3.25)+
+    geom_text(data=map_admin1_centroid,aes(x=as.numeric(long),y=as.numeric(lat),label=str_wrap(admin1Na_1,width=12)),hjust =0.5,vjust=0, nudge_x = 0.0,check_overlap = FALSE, size=4.5)+
     ggtitle(legend_title)+
     #scale_color_brewer(palette = pal)+
     #scale_fill_brewer(legend_title,palette = color, na.value="grey95", labels=br_legend_txt)+
@@ -170,9 +175,10 @@ make_admin3_map<-function(data){
     #                        breaks=c("ctrl", "trt1", "trt2"),
     #                        labels=c("Control", "Treatment 1", "Treatment 2"))
     scale_fill_manual(values = pal,labels=lb_legend,name=legend_title)+
-    coord_sf() +
+    #coord_sf() +
+    coord_sf(xlim=x_lim,ylim=y_lim, expand=FALSE) +
     theme_map 
-  #p
+  p
   return(p)
   
   # ggplotly(p) %>%

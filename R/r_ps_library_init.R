@@ -13,6 +13,11 @@ suppressPackageStartupMessages(library(openxlsx)) #'write xlsx'
 library(RColorBrewer)
 #library(plotly)
 
+#interactive visualisation
+#Load the package in R
+library(esquisse)
+#esquisse::esquisser() #helps in launching the add-in
+
 #---NETWORKS---------
 # library(googleVis)
 # library(networkD3)
