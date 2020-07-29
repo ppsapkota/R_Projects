@@ -11,8 +11,12 @@
 source("./R/r_ps_library_init.R")
 source("./R/r_func_maps.R")
 #----Define path------------------
-d_fname<-"./Data/HF/20200108_ProjectFullDump_SA2_withASO.xlsx"
-d_fname_prjsummary<-"./Data/HF/20200108_ProjectSummary_SA2.xlsx"
+#d_fname<-"./Data/HF/Cumulative_20200713/20200713_ProjectFullDump_cumulative.xlsx"
+#d_fname<-"./Data/HF/COVID_19_RA_20200713/20200729_COVID_Reprogramming_FullDump.xlsx"
+d_fname<-"./Data/HF/COVID_19_RA_20200713/20200713_ProjectFullDump_COVID.xlsx"
+
+
+#d_fname_prjsummary<-"./Data/HF/SA1_20200713/20200713_ProjectSummary_SA1.xlsx"
 pcode_fname<-"./GIS/syr_humanitarian_locations_20181219.xlsx"
 
 #for API
@@ -36,11 +40,28 @@ names(d_srp)<-gsub(" ","_",names(d_srp))
 names(d_location_budget)<-gsub(" ","_",names(d_location_budget))
 names(d_location_ben)<-gsub(" ","_",names(d_location_ben))
 names(d_cluster)<-gsub(" ","_",names(d_cluster))
+#field data type coversion
+# in the locaiton and budget file change some field to double
+d_location_budget<-d_location_budget %>% 
+  mutate(across(c("Percentage","Budget_Distribution","Latitude","Longitude"),as.double))
+
+
+#
+d_location_ben<-d_location_ben %>% 
+                mutate(Percentage = str_remove(Percentage,"%"))%>% 
+                mutate(across(c("Percentage","Budget_Distribution","LocationAdminLevelLatitude","LocationAdminLevelLongitude"),as.double))
+
+
+
+
+
 
 # in the location list, remove locations which does not have funding allocation Percentage
 d_location_budget<-as.data.frame(filter(d_location_budget,!is.na(Percentage) & Percentage>0))
 
 d_location_ben<-as.data.frame(filter(d_location_ben,!is.na(Percentage) & Percentage>0))
+
+
 
 # Another filter for Education
 #d_location_budget<-as.data.frame(filter(d_location_budget, SELECTED=="Yes"))
@@ -164,14 +185,42 @@ d_location_ben<-d_location_ben[1:13]
     d_location_ben<- rename(d_location_ben,"Cluster"="ClusterName")
     
     #
-    d_location_ben_cluster_sum<-d_location_ben %>%
-                                group_by(ChfProjectCode,Cluster,Governorate_Pcode,District_Pcode,SubDistrict_Pcode,Community_Pcode) %>% 
-                                summarise(Men=sum(Men,na.rm = TRUE),
+    d_location_ben_prj_cluster_sum<-d_location_ben %>%
+                                    group_by(ChfProjectCode,Cluster,Governorate,Governorate_Pcode,District,District_Pcode,SubDistrict,SubDistrict_Pcode,Community,Community_Pcode) %>% 
+                                    summarise(Men=sum(Men,na.rm = TRUE),
                                           Women=sum(Women,na.rm = TRUE),
                                           Boys=sum(Boys,na.rm = TRUE),
                                           Girls=sum(Girls,na.rm = TRUE)
                                           ) %>% 
                                 ungroup()
+    
+    #filter location information where admin4 is reported
+    d_location_ben_prj_cluster_sum<-filter(d_location_ben_prj_cluster_sum, !is.na(Community))
+    
+    
+    #Max Location Beneficiaries - Admin4
+    d_location_ben_cluster_max<-d_location_ben_prj_cluster_sum %>% 
+                                    group_by(Cluster,Governorate,Governorate_Pcode,District,District_Pcode,SubDistrict,SubDistrict_Pcode,Community,Community_Pcode) %>% 
+                                    summarise(Men=max(Men,na.rm = TRUE),
+                                              Women=max(Women,na.rm = TRUE),
+                                              Boys=max(Boys,na.rm = TRUE),
+                                              Girls=max(Girls,na.rm = TRUE)
+                                              ) %>% 
+                                    ungroup() %>% 
+                                    mutate(Total_beneficiaries=rowSums(cbind(Men,Women,Boys,Girls)))
+            
+    #location overall beneficiary
+    d_location_ben_total_max<-d_location_ben_prj_cluster_sum %>% 
+                                    group_by(Governorate,Governorate_Pcode,District,District_Pcode,SubDistrict,SubDistrict_Pcode,Community,Community_Pcode) %>% 
+                                    summarise (Men=max(Men,na.rm = TRUE),
+                                              Women=max(Women,na.rm = TRUE),
+                                              Boys=max(Boys,na.rm = TRUE),
+                                              Girls=max(Girls,na.rm = TRUE)
+                                              ) %>%
+                                    ungroup() %>% 
+                                    mutate(Total_beneficiaries=rowSums(cbind(Men,Women,Boys,Girls)))
+    
+    
     #location budget srp
     d_location_budget_srp<- d_location_budget %>% 
                             left_join(d_srp, by=c("ChfProjectCode"="CHF_Code", "Cluster"="Cluster")) 
@@ -310,6 +359,7 @@ d_location_ben<-d_location_ben[1:13]
                                       loc_boys_sum=sum(Boys,na.rm=TRUE),
                                       loc_girls_sum=sum(Girls,na.rm=TRUE)) %>% 
                             ungroup()
+    
     #
     d_projectdata_loc_ben_compare<-left_join(d_projectdata,d_location_prj_ben_sum,by=c("Project_Code"="ChfProjectCode"))
     #check differences
@@ -359,10 +409,8 @@ d_location_ben<-d_location_ben[1:13]
     addWorksheet(wb,"map_admin3_npartner_type")
     addWorksheet(wb,"map_admin3_npartner_cluster")
     addWorksheet(wb,"map_admin3_nproject_cluster")
-    addWorksheet(wb,"map_admin3_cluster_ben")
     addWorksheet(wb,"map_admin3_cluster_budget")
     addWorksheet(wb,"map_admin4_cluster_budget")
-    addWorksheet(wb,"map_admin4_cluster_ben")
     addWorksheet(wb,"map_admin4_nprojects")
     addWorksheet(wb,"map_admin4_nprojects_cluster")
     
@@ -385,20 +433,32 @@ d_location_ben<-d_location_ben[1:13]
     #addWorksheet(wb,"location_cluster_budget_ben")
     #writeDataTable(wb,sheet="location_cluster_budget_ben",x=d_location_cluster,tableName ="location_cluster_budget_ben",startRow = 1)
     
+    addWorksheet(wb,"Location_ben_admin4Max")
+    writeDataTable(wb,sheet="Location_ben_admin4Max",x=d_location_ben_total_max,tableName ="d_location_ben_total_max", startRow = 1)
+    #
+    addWorksheet(wb,"Location_ben_cluster_adm4Max")
+    writeDataTable(wb,sheet="Location_ben_cluster_adm4Max",x=d_location_ben_cluster_max,tableName ="d_location_ben_cluster_max", startRow = 1)
+    
     #
     i_startrow<-1
     ###-Budget and Beneficiaries by cluster
-    cluster_budget_beneficiaries<-d_projectdata_cluster %>% 
+    cluster_budget<-d_projectdata_cluster %>% 
                                   group_by(Cluster) %>% 
-                                  summarise(Budget=sum(Budget_Cluster, na.rm=TRUE),
-                                              Beneficiaries=round(sum(Beneficiaries_Cluster,na.rm = TRUE)),
-                                              Men=round(sum(Men_C, na.rm=TRUE)),
-                                              Women=round(sum(Women_C, na.rm=TRUE)),
-                                              Boys=round(sum(Boys_C, na.rm=TRUE)),
-                                              Girls=round(sum(Girls_C, na.rm=TRUE))
-                                              ) %>% 
-                                    arrange(desc(Budget))
-   
+                                  summarise(Budget=sum(Budget_Cluster, na.rm=TRUE)) %>% 
+                                  arrange(desc(Budget))
+    #
+    cluster_beneficiaries <-d_location_ben_cluster_max %>% 
+                            group_by(Cluster) %>% 
+                            summarise (Men=sum(Men,na.rm = TRUE),
+                                       Women=sum(Women,na.rm = TRUE),
+                                       Boys=sum(Boys,na.rm = TRUE),
+                                       Girls=sum(Girls,na.rm = TRUE),
+                                       Total_beneficiaries=sum(Total_beneficiaries,na.rm = TRUE)
+                                      ) %>%
+                            ungroup()
+    
+    cluster_budget_beneficiaries<-left_join(cluster_budget,cluster_beneficiaries,by=c("Cluster"="Cluster"))
+    
     #ben_v<-data.frame(Beneficiary=NA)
     #cluster_budget_beneficiaries<-as.data.frame(append(cluster_budget_beneficiaries,ben_v,after=2))
     #sum values
@@ -409,6 +469,18 @@ d_location_ben<-d_location_ben[1:13]
                 
     writeDataTable(wb,sheet="summary",x=cluster_budget_beneficiaries,tableName ="cluster_budget", startRow = i_startrow)
     i_startrow<-i_startrow+nrow(cluster_budget_beneficiaries)+5
+    
+    #total beneficiaries -Admin 4 MAX
+    #
+    total_admin4max_beneficiaries <-d_location_ben_total_max %>% 
+                              summarise (Men=sum(Men,na.rm = TRUE),
+                              Women=sum(Women,na.rm = TRUE),
+                              Boys=sum(Boys,na.rm = TRUE),
+                              Girls=sum(Girls,na.rm = TRUE),
+                              Total_beneficiaries=sum(Total_beneficiaries,na.rm = TRUE)
+                            )
+    writeDataTable(wb,sheet="summary",x=total_admin4max_beneficiaries,tableName ="total_beneficiaries", startRow = i_startrow)
+    i_startrow<-i_startrow+5
     
     ###-Budget by allocation type
     budget_allocation_type<-d_projectdata %>% 
@@ -677,46 +749,63 @@ d_location_ben<-d_location_ben[1:13]
     
 ###-------LOCATION BENEFICIARY-------------
     ###--sum of beneficiaries by subdistrict per cluster
-    admin3_cluster_beneficiary<-d_location_ben %>% 
+    admin3_cluster_beneficiary<-d_location_ben_cluster_max %>% 
                                 group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>% 
                                 summarise(Men=sum(Men,na.rm=TRUE),
                                           Women=sum(Women,na.rm=TRUE),
                                           Boys=sum(Boys,na.rm=TRUE),
-                                          Girls=sum(Girls,na.rm=TRUE)) %>% 
-                                ungroup() %>%
-                                mutate(Total=rowSums(.[-1:-7],na.rm=TRUE))
+                                          Girls=sum(Girls,na.rm=TRUE),
+                                          Total_beneficiaries = sum(Total_beneficiaries,na.rm=TRUE)
+                                          ) %>% ungroup()
     #Pivot
     #admin3_cluster_beneficiary_pivot<-select(admin3_cluster_beneficiary,1:3,8)
     admin3_cluster_beneficiary_pivot<-admin3_cluster_beneficiary %>%
                                 select(1:7,12) %>% 
                                 group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>%
-                                spread(Cluster,Total) %>% 
+                                spread(Cluster,Total_beneficiaries) %>% 
                                 ungroup()
     
-    admin3_cluster_beneficiary_pivot$Max_Ben<-apply(admin3_cluster_beneficiary_pivot[,-1:-6],1,function(x, na.rm=FALSE) {max(x, na.rm=TRUE)})
+    #admin3_cluster_beneficiary_pivot$Max_Ben<-apply(admin3_cluster_beneficiary_pivot[,-1:-6],1,function(x, na.rm=FALSE) {max(x, na.rm=TRUE)})
+    addWorksheet(wb,"map_admin3_cluster_ben")
     writeDataTable(wb,sheet="map_admin3_cluster_ben",x=admin3_cluster_beneficiary_pivot,tableName ="admin3_cluster_ben")
     
+    ###--sum of beneficiaries by subdistrict
+    admin3_total_beneficiary<-d_location_ben_total_max %>% 
+                            group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode) %>% 
+                            summarise(Men=sum(Men,na.rm=TRUE),
+                                      Women=sum(Women,na.rm=TRUE),
+                                      Boys=sum(Boys,na.rm=TRUE),
+                                      Girls=sum(Girls,na.rm=TRUE),
+                                      Total_beneficiaries = sum(Total_beneficiaries,na.rm=TRUE)
+                            ) %>% ungroup()
+    
+    #admin3_cluster_beneficiary
+    addWorksheet(wb,"map_admin3_total_ben")
+    writeDataTable(wb,sheet="map_admin3_total_ben",x=admin3_total_beneficiary,tableName ="admin3_total_ben")
+    
   ###--sum of beneficiaries by community per cluster
-    admin4_cluster_beneficiary<-d_location_ben %>% 
-                                group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Community,Community_Pcode,Cluster) %>% 
-                                summarise(Men=sum(Men,na.rm=TRUE),
-                                          Women=sum(Women,na.rm=TRUE),
-                                          Boys=sum(Boys,na.rm=TRUE),
-                                          Girls=sum(Girls,na.rm=TRUE)) %>% 
-                                ungroup() %>%
-                                mutate(Total=rowSums(.[-1:-9],na.rm=TRUE))
+    admin4_cluster_beneficiary<-d_location_ben_prj_cluster_sum %>% 
+                                group_by(Cluster,Governorate,Governorate_Pcode,District,District_Pcode,SubDistrict,SubDistrict_Pcode,Community,Community_Pcode) %>% 
+                                summarise(Men=max(Men,na.rm = TRUE),
+                                          Women=max(Women,na.rm = TRUE),
+                                          Boys=max(Boys,na.rm = TRUE),
+                                          Girls=max(Girls,na.rm = TRUE)
+                                ) %>% 
+                                ungroup() %>% 
+                                mutate(Total_beneficiaries=rowSums(cbind(Men,Women,Boys,Girls)))
+    
     #Pivot
     #admin4_cluster_beneficiary_pivot<-select(admin3_cluster_beneficiary,1:3,8)
     admin4_cluster_beneficiary_pivot<-admin4_cluster_beneficiary %>%
-      select(1:9,14) %>% 
-      group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>%
-      spread(Cluster,Total) %>% 
-      ungroup()
+                                      select(1:9,14) %>% 
+                                      group_by(Governorate,Governorate_Pcode,District, District_Pcode,SubDistrict,SubDistrict_Pcode,Cluster) %>%
+                                      spread(Cluster,Total_beneficiaries) %>% 
+                                      ungroup()
     
-    admin4_cluster_beneficiary_pivot$Max_Ben<-apply(admin4_cluster_beneficiary_pivot[,-1:-8],1,function(x, na.rm=FALSE) {max(x, na.rm=TRUE)})
+    #admin4_cluster_beneficiary_pivot$Max_Ben<-apply(admin4_cluster_beneficiary_pivot[,-1:-8],1,function(x, na.rm=FALSE) {max(x, na.rm=TRUE)})
+    addWorksheet(wb,"map_admin4_cluster_ben")
     writeDataTable(wb,sheet="map_admin4_cluster_ben",x=admin4_cluster_beneficiary_pivot,tableName ="admin4_cluster_ben")
-    
-    
+
 #Strategic Objectives
     #d_srp$srp_objectives<-substr(d_srp$`Strategic_Response_Plan_(SRP)_objectives`,1,26)
     d_srp$srp_objectives<-d_srp$`Strategic_Response_Plan_(SRP)_objectives`
@@ -776,31 +865,31 @@ d_location_ben<-d_location_ben[1:13]
     writeDataTable(wb,sheet="summary",x=environment_marker_nprojects,tableName ="environment_marker_nprojects",startRow = i_startrow)
     i_startrow = i_startrow + nrow(environment_marker_nprojects) +5
     
-### for ASO
-    d_aso<-read_excel(d_fname,sheet="ASO")
-    names(d_aso)<-gsub(" ","_",names(d_aso))
-    d_aso<-d_aso[,c("CHF_Code","Cluster","Sub_Cluster","ASO","Percentage_ASO")]
-    #bring ASO to location budget
-    d_location_budget_aso<-left_join(d_location_budget,d_aso, by=c("ChfProjectCode"="CHF_Code","Cluster"="Cluster"))
-    #make sure data is in numeric format
-    
-    d_location_budget_aso$Budget_Distribution<-as.numeric(as.character(d_location_budget_aso$Budget_Distribution))
-    
-    #estimate budget distribution
-    d_location_budget_aso$Budget_Cluster_ASO<-d_location_budget_aso$Budget_Distribution*d_location_budget_aso$Percentage_ASO/100
-    #
-    addWorksheet(wb,"location_cluster_budget_aso")
-    writeDataTable(wb,sheet="location_cluster_budget_aso",x=d_location_budget_aso,tableName ="d_location_budget_aso")
-    
-    #summarize the budget
-    aso_budget<-d_location_budget_aso %>% 
-      group_by(ASO) %>% 
-      summarise(budget_by_aso=sum(Budget_Cluster_ASO)) %>% 
-      ungroup()
-    #
-    writeData(wb,sheet="summary",x="Budget by Allocation Strategy Objective", startRow = i_startrow-1)
-    writeDataTable(wb,sheet="summary",x=aso_budget,tableName ="location_cluster_budget_aso",startRow = i_startrow)
-    
+# ### for ASO
+#     d_aso<-read_excel(d_fname,sheet="ASO")
+#     names(d_aso)<-gsub(" ","_",names(d_aso))
+#     d_aso<-d_aso[,c("CHF_Code","Cluster","Sub_Cluster","ASO","Percentage_ASO")]
+#     #bring ASO to location budget
+#     d_location_budget_aso<-left_join(d_location_budget,d_aso, by=c("ChfProjectCode"="CHF_Code","Cluster"="Cluster"))
+#     #make sure data is in numeric format
+#     
+#     d_location_budget_aso$Budget_Distribution<-as.numeric(as.character(d_location_budget_aso$Budget_Distribution))
+#     
+#     #estimate budget distribution
+#     d_location_budget_aso$Budget_Cluster_ASO<-d_location_budget_aso$Budget_Distribution*d_location_budget_aso$Percentage_ASO/100
+#     #
+#     addWorksheet(wb,"location_cluster_budget_aso")
+#     writeDataTable(wb,sheet="location_cluster_budget_aso",x=d_location_budget_aso,tableName ="d_location_budget_aso")
+#     
+#     #summarize the budget
+#     aso_budget<-d_location_budget_aso %>% 
+#       group_by(ASO) %>% 
+#       summarise(budget_by_aso=sum(Budget_Cluster_ASO)) %>% 
+#       ungroup()
+#     #
+#     writeData(wb,sheet="summary",x="Budget by Allocation Strategy Objective", startRow = i_startrow-1)
+#     writeDataTable(wb,sheet="summary",x=aso_budget,tableName ="location_cluster_budget_aso",startRow = i_startrow)
+#     
     
   #save file                     
     saveWorkbook(wb,save_summary_fname,overwrite = TRUE)

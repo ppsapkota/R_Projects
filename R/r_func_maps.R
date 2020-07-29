@@ -72,6 +72,10 @@ make_admin3_map<-function(data){
   x_lim<-c(35.5,38.8)
   y_lim<-c(35.2,37.1)
   
+  #NES
+  #x_lim<-c(37.3,42.8)
+  #y_lim<-c(34.3,37.3)
+  
   #for dataset
   dataset<-data##assign data to map
   d_map_admin3<-data
